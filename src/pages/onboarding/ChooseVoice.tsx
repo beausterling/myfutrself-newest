@@ -23,6 +23,7 @@ const ChooseVoice = () => {
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [recordingInterval, setRecordingInterval] = useState<NodeJS.Timeout | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   // Disable ALL background scrolling when modal is open
   useEffect(() => {
@@ -159,34 +160,118 @@ const ChooseVoice = () => {
   };
 
   const handleVoiceModalClose = () => {
-    setShowVoiceModal(false);
+    console.log('🔄 Closing voice modal and cleaning up resources');
+    
+    // Stop any active recording
+    if (isRecording && mediaRecorder) {
+      console.log('⏹️ Stopping active recording during modal close');
+      mediaRecorder.stop();
+    }
+    
+    // Clear recording interval
+    if (recordingInterval) {
+      console.log('⏰ Clearing recording interval');
+      clearInterval(recordingInterval);
+      setRecordingInterval(null);
+    }
+    
+    // Stop all media stream tracks
+    if (streamRef.current) {
+      console.log('🎤 Stopping media stream tracks');
+      streamRef.current.getTracks().forEach(track => {
+        track.stop();
+        console.log(`📡 Stopped track: ${track.kind}`);
+      });
+      streamRef.current = null;
+    }
+    
+    // Reset all recording-related state
     setIsRecording(false);
     setRecordingTime(0);
     setAudioBlob(null);
-    if (mediaRecorder) {
-      mediaRecorder.stop();
-    }
-    if (recordingInterval) {
-      clearInterval(recordingInterval);
-    }
+    setMediaRecorder(null);
+    
+    // Close modal
+    setShowVoiceModal(false);
+    
+    console.log('✅ Voice modal cleanup completed');
   };
 
   const startRecording = async () => {
     try {
+      console.log('🎤 Starting recording process');
+      
+      // Clean up any existing recording session first
+      if (mediaRecorder && isRecording) {
+        console.log('⏹️ Stopping existing recording before starting new one');
+        mediaRecorder.stop();
+      }
+      
+      if (recordingInterval) {
+        console.log('⏰ Clearing existing recording interval');
+        clearInterval(recordingInterval);
+        setRecordingInterval(null);
+      }
+      
+      if (streamRef.current) {
+        console.log('🎤 Stopping existing media stream');
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+      
+      // Clear previous audio blob
+      setAudioBlob(null);
+      setRecordingTime(0);
+      
+      console.log('🎤 Requesting microphone access');
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      
       const recorder = new MediaRecorder(stream);
       const chunks: BlobPart[] = [];
 
       recorder.ondataavailable = (event) => {
+        console.log('📊 Recording data available:', event.data.size, 'bytes');
         chunks.push(event.data);
       };
 
       recorder.onstop = () => {
+        console.log('⏹️ Recording stopped, creating blob from', chunks.length, 'chunks');
         const blob = new Blob(chunks, { type: 'audio/wav' });
         setAudioBlob(blob);
-        stream.getTracks().forEach(track => track.stop());
+        
+        // Stop stream tracks and clear reference
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => {
+            track.stop();
+            console.log(`📡 Stopped track: ${track.kind}`);
+          });
+          streamRef.current = null;
+        }
+        
+        // Clear media recorder reference
+        setMediaRecorder(null);
+        console.log('✅ Recording cleanup completed');
       };
 
+      recorder.onerror = (event) => {
+        console.error('❌ MediaRecorder error:', event);
+        setSaveError('Recording failed. Please try again.');
+        
+        // Clean up on error
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+          streamRef.current = null;
+        }
+        setIsRecording(false);
+        setMediaRecorder(null);
+        if (recordingInterval) {
+          clearInterval(recordingInterval);
+          setRecordingInterval(null);
+        }
+      };
+
+      console.log('▶️ Starting MediaRecorder');
       recorder.start();
       setMediaRecorder(recorder);
       setIsRecording(true);
@@ -195,9 +280,11 @@ const ChooseVoice = () => {
       const interval = setInterval(() => {
         setRecordingTime(prev => {
           if (prev >= 30) {
+            console.log('⏰ Recording time limit reached, stopping');
             recorder.stop();
             setIsRecording(false);
             clearInterval(interval);
+            setRecordingInterval(null);
             return 30;
           }
           return prev + 1;
@@ -205,50 +292,98 @@ const ChooseVoice = () => {
       }, 1000);
       setRecordingInterval(interval);
 
+      console.log('✅ Recording started successfully');
     } catch (error) {
-      console.error('Error starting recording:', error);
+      console.error('❌ Error starting recording:', error);
       setSaveError('Failed to access microphone. Please check permissions.');
+      
+      // Clean up on error
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+      setIsRecording(false);
+      setMediaRecorder(null);
     }
   };
 
   const stopRecording = () => {
+    console.log('⏹️ Manual stop recording requested');
+    
     if (mediaRecorder && isRecording) {
+      console.log('⏹️ Stopping MediaRecorder');
       mediaRecorder.stop();
       setIsRecording(false);
+      
+      if (recordingInterval) {
+        console.log('⏰ Clearing recording interval');
+        clearInterval(recordingInterval);
+        setRecordingInterval(null);
+      }
+      
+      // Note: MediaStream cleanup will happen in recorder.onstop event
+      console.log('✅ Stop recording initiated');
+    } else {
+      console.log('⚠️ No active recording to stop');
+    }
+  };
+
+  // Cleanup on component unmount
+  useEffect(() => {
+    return () => {
+      console.log('🧹 Component unmounting, cleaning up resources');
+      
+      // Stop any active recording
+      if (mediaRecorder && isRecording) {
+        mediaRecorder.stop();
+      }
+      
+      // Clear interval
       if (recordingInterval) {
         clearInterval(recordingInterval);
       }
-    }
-  };
+      
+      // Stop media stream
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       if (file.type.startsWith('audio/')) {
+        console.log('📁 Audio file uploaded:', file.name, file.size, 'bytes');
         setAudioBlob(file);
       } else {
+        console.error('❌ Invalid file type:', file.type);
         setSaveError('Please select an audio file.');
       }
+    } else {
+      console.log('📁 No file selected');
     }
   };
 
   const handleVoiceSubmit = async () => {
     if (!audioBlob) {
+      console.error('❌ No audio blob available for submission');
       setSaveError('Please record or upload an audio file first.');
       return;
     }
 
     try {
-      console.log('🎤 Submitting custom voice recording');
+      console.log('🎤 Submitting custom voice recording:', audioBlob.size, 'bytes');
       // Here you would typically upload the audio to your voice cloning service
       // For now, we'll just close the modal and show a success message
       
       // Set a custom voice ID to indicate user has uploaded their voice
       dispatch({ type: 'SET_VOICE', payload: 'custom_uploaded' });
       
-      setShowVoiceModal(false);
+      // Clean up and close modal
       setAudioBlob(null);
       setRecordingTime(0);
+      setShowVoiceModal(false);
       
       console.log('✅ Custom voice uploaded successfully');
     } catch (error) {
