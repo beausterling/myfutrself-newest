@@ -5,6 +5,7 @@ import { createAuthenticatedSupabaseClient } from '../lib/supabase';
 interface VoiceUploadResult {
   success: boolean;
   url?: string;
+  filePath?: string;
   error?: string;
 }
 
@@ -86,25 +87,31 @@ export const useVoiceStorage = () => {
       const publicUrl = urlData.publicUrl;
       console.log('🔗 Public URL generated:', publicUrl);
 
-      // Update user profile with voice recording URL
-      console.log('📝 Updating user profile with voice recording URL');
+      // Update user profile with voice recording path and set voice preference
+      console.log('📝 Updating user profile with voice recording path');
       const { error: updateError } = await supabase
         .from('user_profiles')
         .update({
+          custom_voice_audio_path: filePath,
           voice_preference: 'custom_uploaded',
           updated_at: new Date().toISOString()
         })
         .eq('user_id', user.id);
 
       if (updateError) {
-        console.warn('⚠️ Warning: Failed to update user profile with voice preference:', updateError);
-        // Don't fail the entire operation for this
+        console.error('❌ Failed to update user profile with voice recording path:', updateError);
+        // Try to clean up the uploaded file
+        await supabase.storage
+          .from('voice_recordings')
+          .remove([filePath]);
+        throw new Error(`Failed to save voice recording reference: ${updateError.message}`);
       }
 
-      console.log('✅ Voice recording upload completed successfully');
+      console.log('✅ Voice recording upload and profile update completed successfully');
       return {
         success: true,
-        url: publicUrl
+        url: publicUrl,
+        filePath: filePath
       };
 
     } catch (error) {
@@ -136,13 +143,28 @@ export const useVoiceStorage = () => {
 
       const supabase = createAuthenticatedSupabaseClient(token);
 
-      const { error } = await supabase.storage
+      // Delete from storage
+      const { error: storageError } = await supabase.storage
         .from('voice_recordings')
         .remove([filePath]);
 
-      if (error) {
-        console.error('❌ Delete error:', error);
-        throw new Error(`Failed to delete recording: ${error.message}`);
+      if (storageError) {
+        console.error('❌ Storage delete error:', storageError);
+        throw new Error(`Failed to delete recording: ${storageError.message}`);
+      }
+
+      // Clear the custom_voice_audio_path from user profile
+      const { error: updateError } = await supabase
+        .from('user_profiles')
+        .update({
+          custom_voice_audio_path: null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user.id);
+
+      if (updateError) {
+        console.warn('⚠️ Warning: Failed to clear voice recording path from profile:', updateError);
+        // Don't fail the entire operation for this
       }
 
       console.log('✅ Voice recording deleted successfully');
@@ -152,6 +174,44 @@ export const useVoiceStorage = () => {
       console.error('❌ Voice recording deletion failed:', error);
       setUploadError(error instanceof Error ? error.message : 'Failed to delete voice recording');
       return false;
+    }
+  };
+
+  const getVoiceRecordingPath = async (): Promise<string | null> => {
+    if (!user?.id) {
+      console.error('❌ Get path failed: User authentication required');
+      return null;
+    }
+
+    try {
+      console.log('📋 Getting voice recording path for user:', user.id);
+
+      const token = await getToken({ template: 'supabase' });
+      if (!token) {
+        throw new Error('No authentication token available');
+      }
+
+      const supabase = createAuthenticatedSupabaseClient(token);
+
+      // Get user's custom_voice_audio_path
+      const { data: userProfile, error: profileError } = await supabase
+        .from('user_profiles')
+        .select('custom_voice_audio_path')
+        .eq('user_id', user.id)
+        .single();
+
+      if (profileError) {
+        console.error('❌ Error fetching user profile for voice path:', profileError);
+        return null;
+      }
+
+      console.log('✅ Voice recording path retrieved:', userProfile?.custom_voice_audio_path || 'none');
+      return userProfile?.custom_voice_audio_path || null;
+
+    } catch (error) {
+      console.error('❌ Voice recording path retrieval failed:', error);
+      setUploadError(error instanceof Error ? error.message : 'Failed to get voice recording path');
+      return null;
     }
   };
 
@@ -207,6 +267,7 @@ export const useVoiceStorage = () => {
   return {
     uploadVoiceRecording,
     deleteVoiceRecording,
+    getVoiceRecordingPath,
     listVoiceRecordings,
     isUploading,
     uploadError,
