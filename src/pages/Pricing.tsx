@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 const Pricing = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<string>('starter');
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
 
   useEffect(() => {
     const handleScroll = () => {
@@ -19,7 +20,8 @@ const Pricing = () => {
   const plans = {
     free: {
       name: 'Free',
-      price: '$0',
+      monthlyPrice: 0,
+      annualPrice: 0,
       icon: <Star className="w-6 h-6" />,
       color: 'from-gray-500 to-gray-600',
       features: [
@@ -32,7 +34,8 @@ const Pricing = () => {
     },
     starter: {
       name: 'Starter',
-      price: '$12',
+      monthlyPrice: 7,
+      annualPrice: 70, // ~17% discount (2 months free)
       icon: <Zap className="w-6 h-6" />,
       color: 'from-blue-500 to-blue-600',
       popular: true,
@@ -48,7 +51,8 @@ const Pricing = () => {
     },
     premium: {
       name: 'Premium',
-      price: '$29',
+      monthlyPrice: 19,
+      annualPrice: 190, // ~17% discount (2 months free)
       icon: <Crown className="w-6 h-6" />,
       color: 'from-purple-500 to-purple-600',
       features: [
@@ -61,6 +65,25 @@ const Pricing = () => {
         'Dedicated account manager'
       ]
     }
+  };
+
+  const getPrice = (plan: typeof plans[keyof typeof plans]) => {
+    if (plan.monthlyPrice === 0) return '$0';
+    
+    const price = billingCycle === 'monthly' ? plan.monthlyPrice : plan.annualPrice;
+    const displayPrice = billingCycle === 'monthly' ? price : Math.round(price / 12);
+    
+    return `$${displayPrice}`;
+  };
+
+  const getSavings = (plan: typeof plans[keyof typeof plans]) => {
+    if (plan.monthlyPrice === 0 || billingCycle === 'monthly') return null;
+    
+    const monthlyCost = plan.monthlyPrice * 12;
+    const annualCost = plan.annualPrice;
+    const savings = monthlyCost - annualCost;
+    
+    return savings > 0 ? `Save $${savings}/year` : null;
   };
 
   return (
@@ -95,13 +118,53 @@ const Pricing = () => {
                 <Check className="w-4 h-4 text-green-400" />
                 <span>Cancel anytime</span>
               </div>
+              <div className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-green-400" />
+                <span>14-day free trial</span>
+              </div>
             </div>
           </motion.div>
         </div>
       </div>
 
+      {/* Billing Toggle */}
+      <div className="container mx-auto px-4 pb-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="flex justify-center"
+        >
+          <div className="bg-white/5 backdrop-blur-lg rounded-xl border border-white/10 p-1 flex">
+            <button
+              onClick={() => setBillingCycle('monthly')}
+              className={`px-6 py-2 rounded-lg font-medium transition-all duration-300 ${
+                billingCycle === 'monthly'
+                  ? 'bg-primary-aqua text-white shadow-lg'
+                  : 'text-white/70 hover:text-white'
+              }`}
+            >
+              Monthly
+            </button>
+            <button
+              onClick={() => setBillingCycle('annual')}
+              className={`px-6 py-2 rounded-lg font-medium transition-all duration-300 relative ${
+                billingCycle === 'annual'
+                  ? 'bg-primary-aqua text-white shadow-lg'
+                  : 'text-white/70 hover:text-white'
+              }`}
+            >
+              Annual
+              <span className="absolute -top-2 -right-2 bg-green-500 text-white text-xs px-2 py-0.5 rounded-full">
+                Save 17%
+              </span>
+            </button>
+          </div>
+        </motion.div>
+      </div>
+
       {/* Compact Pricing Cards */}
-      <div className="container mx-auto px-4 py-16">
+      <div className="container mx-auto px-4 pb-16">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -120,7 +183,7 @@ const Pricing = () => {
         <div className="grid grid-cols-3 gap-3 sm:gap-6 mb-12 max-w-4xl mx-auto">
           {Object.entries(plans).map(([planKey, plan], index) => (
             <motion.div
-              key={planKey}
+              key={`${planKey}-${billingCycle}`}
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.3 + index * 0.1 }}
@@ -147,9 +210,16 @@ const Pricing = () => {
                   {plan.name}
                 </h3>
                 <div className="text-lg sm:text-2xl font-bold font-heading">
-                  {plan.price}
-                  <span className="text-xs sm:text-sm text-white/60">/month</span>
+                  {getPrice(plan)}
+                  <span className="text-xs sm:text-sm text-white/60">
+                    {plan.monthlyPrice === 0 ? '' : billingCycle === 'monthly' ? '/month' : '/month'}
+                  </span>
                 </div>
+                {getSavings(plan) && (
+                  <div className="text-xs text-green-400 mt-1">
+                    {getSavings(plan)}
+                  </div>
+                )}
               </div>
             </motion.div>
           ))}
@@ -157,7 +227,7 @@ const Pricing = () => {
 
         {/* Selected Plan Features */}
         <motion.div
-          key={selectedPlan}
+          key={`${selectedPlan}-${billingCycle}`}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
@@ -171,10 +241,22 @@ const Pricing = () => {
               <h3 className="text-2xl font-bold mb-2 font-heading">
                 {plans[selectedPlan as keyof typeof plans].name} Plan
               </h3>
-              <div className="text-3xl font-bold font-heading mb-4">
-                {plans[selectedPlan as keyof typeof plans].price}
-                <span className="text-lg text-white/60">/month</span>
+              <div className="text-3xl font-bold font-heading mb-2">
+                {getPrice(plans[selectedPlan as keyof typeof plans])}
+                <span className="text-lg text-white/60">
+                  {plans[selectedPlan as keyof typeof plans].monthlyPrice === 0 ? '' : billingCycle === 'monthly' ? '/month' : '/month'}
+                </span>
               </div>
+              {getSavings(plans[selectedPlan as keyof typeof plans]) && (
+                <div className="text-green-400 font-medium mb-2">
+                  {getSavings(plans[selectedPlan as keyof typeof plans])}
+                </div>
+              )}
+              {billingCycle === 'annual' && plans[selectedPlan as keyof typeof plans].monthlyPrice > 0 && (
+                <div className="text-white/60 text-sm mb-4">
+                  Billed annually (${plans[selectedPlan as keyof typeof plans].annualPrice}/year)
+                </div>
+              )}
               <p className="text-white/70 font-body">
                 {selectedPlan === 'free' && 'Perfect for getting started with basic goal tracking'}
                 {selectedPlan === 'starter' && 'Ideal for serious goal achievers who want personalized coaching'}
@@ -198,6 +280,11 @@ const Pricing = () => {
               <button className="btn btn-primary text-lg px-8 py-4 font-heading w-full sm:w-auto">
                 {selectedPlan === 'free' ? 'Get Started Free' : `Choose ${plans[selectedPlan as keyof typeof plans].name}`}
               </button>
+              {selectedPlan !== 'free' && (
+                <p className="text-white/60 text-sm mt-3">
+                  14-day free trial • No credit card required
+                </p>
+              )}
             </div>
           </div>
         </motion.div>
@@ -236,6 +323,15 @@ const Pricing = () => {
                   Yes! All paid plans come with a 14-day free trial. No credit card required to start your free account.
                 </p>
               </div>
+
+              <div className="bg-white/5 backdrop-blur-lg rounded-xl border border-white/10 p-6">
+                <h3 className="text-lg font-semibold mb-3 font-heading">
+                  What's the difference between monthly and annual billing?
+                </h3>
+                <p className="text-white/80 font-body">
+                  Annual billing gives you a 17% discount (equivalent to 2 months free). You can switch between billing cycles at any time.
+                </p>
+              </div>
             </div>
 
             <div className="space-y-6">
@@ -254,6 +350,15 @@ const Pricing = () => {
                 </h3>
                 <p className="text-white/80 font-body">
                   Absolutely. You can cancel your subscription at any time from your account settings. You'll continue to have access until the end of your billing period.
+                </p>
+              </div>
+
+              <div className="bg-white/5 backdrop-blur-lg rounded-xl border border-white/10 p-6">
+                <h3 className="text-lg font-semibold mb-3 font-heading">
+                  Do you offer refunds?
+                </h3>
+                <p className="text-white/80 font-body">
+                  We offer a 14-day free trial so you can test everything risk-free. For annual subscriptions, we offer prorated refunds within 30 days.
                 </p>
               </div>
             </div>
@@ -278,6 +383,9 @@ const Pricing = () => {
           <button className="btn btn-primary text-lg px-8 py-4 font-heading">
             Get Started Free
           </button>
+          <p className="text-white/60 text-sm mt-3">
+            14-day free trial • No credit card required • Cancel anytime
+          </p>
         </motion.div>
       </div>
     </div>
