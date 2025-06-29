@@ -377,8 +377,8 @@ const ChooseVoice = () => {
             
             <div className="text-center">
               <h3 className="text-2xl font-bold mb-3 font-heading">Create Your Custom Voice</h3>
-              <p className="text-white/70 mb-6 text-base font-body">
-                Record or upload 30 seconds of your voice.
+              <p className="text-white/70 mb-6 text-sm font-body">
+                Record or upload 30 seconds of your voice
               </p>
               
               <div className="space-y-4">
