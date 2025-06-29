@@ -367,7 +367,7 @@ const ChooseVoice = () => {
       {/* Voice Recording/Upload Modal */}
       {showVoiceModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-bg-primary border border-white/20 rounded-2xl p-6 max-w-lg w-full relative">
+          <div className="bg-bg-primary border border-white/20 rounded-2xl p-6 max-w-md w-full relative">
             <button
               onClick={handleVoiceModalClose}
               className="absolute top-4 right-4 text-white/60 hover:text-white transition-colors"
@@ -376,82 +376,59 @@ const ChooseVoice = () => {
             </button>
             
             <div className="text-center">
-              <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Mic className="w-8 h-8 text-white" />
+              <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-3">
+                <Mic className="w-6 h-6 text-white" />
               </div>
               
-              <h3 className="text-2xl font-bold mb-3 font-heading">Create Your Custom Voice</h3>
-              <p className="text-white/70 mb-4 font-body">
-                Record or upload 30 seconds of your voice to create a personalized voice clone.
+              <h3 className="text-xl font-bold mb-2 font-heading">Create Your Custom Voice</h3>
+              <p className="text-white/70 mb-4 text-sm font-body">
+                Record or upload 30 seconds of your voice.
               </p>
               
-              {/* Recording Section */}
-              <div className="space-y-4">
-                {/* Record Audio */}
-                <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-                  <h4 className="font-semibold mb-3 font-heading flex items-center gap-2">
-                    <Mic className="w-5 h-5" />
-                    Record Your Voice
-                  </h4>
-                  
-                  {!audioBlob && (
-                    <div className="text-center">
-                      {!isRecording ? (
+              <div className="space-y-3">
+                {/* Simple Recording Button */}
+                <div className="text-center">
+                  {!audioBlob ? (
+                    !isRecording ? (
+                      <button
+                        onClick={startRecording}
+                        className="w-20 h-20 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center mx-auto transition-all duration-300 hover:scale-105"
+                      >
+                        <Mic className="w-8 h-8 text-white" />
+                      </button>
+                    ) : (
+                      <div className="text-center">
                         <button
-                          onClick={startRecording}
-                          className="btn btn-primary mb-3"
+                          onClick={stopRecording}
+                          className="w-20 h-20 bg-red-500 rounded-full flex items-center justify-center mx-auto animate-pulse"
                         >
-                          <Mic className="w-5 h-5 mr-2" />
-                          Start Recording
+                          <Square className="w-8 h-8 text-white" />
                         </button>
-                      ) : (
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-center gap-4">
-                            <div className="w-4 h-4 bg-red-500 rounded-full animate-pulse"></div>
-                            <span className="text-lg font-mono">{recordingTime}s / 30s</span>
-                          </div>
-                          <button
-                            onClick={stopRecording}
-                            className="btn bg-red-500 hover:bg-red-600 text-white"
-                          >
-                            <Square className="w-5 h-5 mr-2" />
-                            Stop Recording
-                          </button>
-                        </div>
-                      )}
-                      <p className="text-white/60 text-sm mt-2">
-                        Recording will automatically stop after 30 seconds
-                      </p>
-                    </div>
-                  )}
-                  
-                  {audioBlob && (
-                    <div className="text-center">
-                      <div className="bg-green-500/20 border border-green-500/30 rounded-lg p-4 mb-3">
-                        <p className="text-green-400 font-medium">✓ Recording completed!</p>
-                        <p className="text-white/70 text-sm">Duration: {recordingTime} seconds</p>
+                        <p className="text-white/70 text-sm mt-2">{recordingTime}s / 30s</p>
                       </div>
+                    )
+                  ) : (
+                    <div className="text-center">
+                      <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-2">
+                        <Mic className="w-8 h-8 text-white" />
+                      </div>
+                      <p className="text-green-400 text-sm">✓ Recording completed ({recordingTime}s)</p>
                       <button
                         onClick={() => {
                           setAudioBlob(null);
                           setRecordingTime(0);
                         }}
-                        className="btn btn-outline text-sm"
+                        className="text-white/60 text-xs underline mt-1 hover:text-white"
                       >
-                        <RotateCcw className="w-4 h-4 mr-2" />
-                        Record Again
+                        Record again
                       </button>
                     </div>
                   )}
                 </div>
                 
-                {/* Upload Audio */}
-                <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-                  <h4 className="font-semibold mb-3 font-heading flex items-center gap-2">
-                    <Upload className="w-5 h-5" />
-                    Upload Audio File
-                  </h4>
-                  
+                {/* Compact Upload Section */}
+                <div className="text-center">
+                  <p className="text-white/60 text-xs mb-2">or</p>
                   <label className="block">
                     <input
                       type="file"
@@ -459,38 +436,34 @@ const ChooseVoice = () => {
                       onChange={handleFileUpload}
                       className="hidden"
                     />
-                    <div className="border-2 border-dashed border-white/20 rounded-lg p-4 text-center hover:border-white/40 transition-colors cursor-pointer">
-                      <Upload className="w-8 h-8 text-white/40 mx-auto mb-1" />
-                      <p className="text-white/70">Click to upload an audio file</p>
-                      <p className="text-white/50 text-sm mt-1">Supports MP3, WAV, M4A (max 30 seconds)</p>
+                    <div className="border border-dashed border-white/30 rounded-lg p-3 text-center hover:border-white/50 transition-colors cursor-pointer">
+                      <Upload className="w-5 h-5 text-white/60 mx-auto mb-1" />
+                      <p className="text-white/70 text-sm">Upload audio file</p>
+                      <p className="text-white/50 text-xs">MP3, WAV, M4A (30s max)</p>
                     </div>
                   </label>
                 </div>
-                
-                {/* Submit Button */}
-                <div className="flex gap-3">
-                  <button
-                    onClick={handleVoiceModalClose}
-                    className="flex-1 btn btn-outline font-heading"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleVoiceSubmit}
-                    disabled={!audioBlob}
-                    className={`flex-1 btn font-heading ${
-                      audioBlob 
-                        ? 'btn-primary' 
-                        : 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                    }`}
-                  >
-                    Create Voice Clone
-                  </button>
-                </div>
+              </div>
               
-                <p className="text-white/50 text-xs text-center">
-                  Your voice data will be processed securely and used only for creating your personalized voice clone.
-                </p>
+              {/* Compact Bottom Buttons */}
+              <div className="flex gap-2 mt-6">
+                <button
+                  onClick={handleVoiceModalClose}
+                  className="flex-1 px-4 py-2 text-sm border border-white/20 rounded-lg text-white/80 hover:text-white hover:border-white/40 transition-colors font-heading"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleVoiceSubmit}
+                  disabled={!audioBlob}
+                  className={`flex-1 px-4 py-2 text-sm rounded-lg font-heading transition-colors ${
+                    audioBlob 
+                      ? 'bg-primary-aqua hover:bg-primary-aqua/80 text-white' 
+                      : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  Submit
+                </button>
               </div>
             </div>
           </div>
