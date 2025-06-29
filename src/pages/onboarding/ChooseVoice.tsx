@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser, useAuth, useClerk } from '@clerk/clerk-react';
-import { AlertCircle, Mic, Play, Pause, X, CreditCard, Loader2, Upload, Square, RotateCcw } from 'lucide-react';
+import { AlertCircle, Mic, Play, Pause, X, CreditCard, Loader2, Upload, Square, RotateCcw, Check } from 'lucide-react';
 import { useOnboarding } from '../../contexts/OnboardingContext';
 import { useElevenLabsVoices } from '../../hooks/useElevenLabsVoices';
 import { createAuthenticatedSupabaseClient } from '../../lib/supabase';
@@ -692,11 +692,7 @@ const ChooseVoice = () => {
                 {audioBlob && (
                   <div className="text-center">
                     <div className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                      {isPlayingRecording ? (
-                        <Pause className="w-10 h-10 text-white" />
-                      ) : (
-                        <Play className="w-10 h-10 text-white" />
-                      )}
+                      <Check className="w-10 h-10 text-white" />
                     </div>
                     <p className="text-green-400 text-lg font-bold">✓ Recording Complete!</p>
                     <p className="text-white/70 text-sm">Duration: {recordingTime} seconds</p>
@@ -705,7 +701,7 @@ const ChooseVoice = () => {
                     <div className="flex justify-center gap-3 mt-4">
                       <button
                         onClick={isPlayingRecording ? stopPlayback : playRecording}
-                        className="px-4 py-2 bg-primary-aqua hover:bg-primary-aqua/80 text-white rounded-lg transition-colors flex items-center gap-2"
+                        className="btn btn-outline flex items-center gap-2"
                       >
                         {isPlayingRecording ? (
                           <>
@@ -723,10 +719,10 @@ const ChooseVoice = () => {
                       <button
                         onClick={startNewRecording}
                         disabled={isPlayingRecording}
-                        className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${
+                        className={`btn transition-colors flex items-center gap-2 ${
                           isPlayingRecording 
-                            ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                            : 'bg-white/10 hover:bg-white/20 text-white border border-white/20'
+                            ? 'btn-disabled cursor-not-allowed'
+                            : 'btn-outline'
                         }`}
                       >
                         <RotateCcw className="w-4 h-4" />
@@ -761,17 +757,17 @@ const ChooseVoice = () => {
               <div className="flex gap-3">
                 <button
                   onClick={handleVoiceModalClose}
-                  className="flex-1 px-4 py-3 border border-white/20 rounded-lg text-white/80 hover:text-white hover:border-white/40 transition-colors font-heading"
+                  className="flex-1 btn btn-outline font-heading"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleVoiceSubmit}
                   disabled={!audioBlob || isRecording}
-                  className={`flex-1 px-4 py-3 rounded-lg font-heading transition-colors ${
+                  className={`flex-1 btn font-heading transition-colors ${
                     audioBlob && !isRecording
-                      ? 'bg-primary-aqua hover:bg-primary-aqua/80 text-white' 
-                      : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                      ? 'btn-primary' 
+                      : 'btn-disabled cursor-not-allowed'
                   }`}
                 >
                   {isRecording ? 'Recording...' : 'Create Voice Clone'}
