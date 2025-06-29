@@ -4,6 +4,7 @@ import { useUser, useAuth, useClerk } from '@clerk/clerk-react';
 import { AlertCircle, Mic, Play, Pause, X, CreditCard, Loader2, Upload, Square, RotateCcw, Check } from 'lucide-react';
 import { useOnboarding } from '../../contexts/OnboardingContext';
 import { useElevenLabsVoices } from '../../hooks/useElevenLabsVoices';
+import { useVoiceStorage } from '../../hooks/useVoiceStorage';
 import { createAuthenticatedSupabaseClient } from '../../lib/supabase';
 
 const ChooseVoice = () => {
@@ -27,6 +28,7 @@ const ChooseVoice = () => {
   const [microphonePermissionGranted, setMicrophonePermissionGranted] = useState(false);
   const [isPlayingRecording, setIsPlayingRecording] = useState(false);
   const [playbackAudio, setPlaybackAudio] = useState<HTMLAudioElement | null>(null);
+  const { uploadVoiceRecording, isUploading: isUploadingVoice } = useVoiceStorage();
 
   // Disable ALL background scrolling when modal is open
   useEffect(() => {
@@ -469,11 +471,20 @@ const ChooseVoice = () => {
     }
 
     try {
+      setIsSaving(true);
+      setSaveError(null);
       console.log('🎤 Submitting custom voice recording:', audioBlob.size, 'bytes');
-      // Here you would typically upload the audio to your voice cloning service
-      // For now, we'll just close the modal and show a success message
       
-      // Set a custom voice ID to indicate user has uploaded their voice
+      // Upload the voice recording to Supabase Storage
+      const uploadResult = await uploadVoiceRecording(audioBlob);
+      
+      if (!uploadResult.success) {
+        throw new Error(uploadResult.error || 'Failed to upload voice recording');
+      }
+      
+      console.log('✅ Voice recording uploaded successfully:', uploadResult.url);
+      
+      // Set voice preference to indicate user has uploaded their voice
       dispatch({ type: 'SET_VOICE', payload: 'custom_uploaded' });
       
       // Clean up and close modal
@@ -481,10 +492,12 @@ const ChooseVoice = () => {
       setRecordingTime(0);
       setShowVoiceModal(false);
       
-      console.log('✅ Custom voice uploaded successfully');
+      console.log('✅ Custom voice submission completed successfully');
     } catch (error) {
       console.error('❌ Error uploading custom voice:', error);
-      setSaveError('Failed to upload voice. Please try again.');
+      setSaveError(error instanceof Error ? error.message : 'Failed to upload voice. Please try again.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -763,14 +776,20 @@ const ChooseVoice = () => {
                 </button>
                 <button
                   onClick={handleVoiceSubmit}
-                  disabled={!audioBlob || isRecording}
+                  disabled={!audioBlob || isRecording || isUploadingVoice || isSaving}
                   className={`flex-1 btn font-heading transition-all duration-300 ${
-                    audioBlob && !isRecording
+                    audioBlob && !isRecording && !isUploadingVoice && !isSaving
                       ? 'btn-primary' 
                       : 'bg-transparent text-gray-400 border border-gray-600 cursor-not-allowed hover:bg-transparent'
                   }`}
                 >
-                  {isRecording ? 'Recording...' : 'Submit'}
+                  {isRecording ? 'Recording...' : 
+                   isUploadingVoice || isSaving ? (
+                     <>
+                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                       Uploading...
+                     </>
+                   ) : 'Submit'}
                 </button>
               </div>
             </div>
