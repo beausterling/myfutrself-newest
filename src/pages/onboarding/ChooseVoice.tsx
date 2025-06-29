@@ -30,6 +30,7 @@ const ChooseVoice = () => {
   const [playbackAudio, setPlaybackAudio] = useState<HTMLAudioElement | null>(null);
   const [existingVoiceRecording, setExistingVoiceRecording] = useState<string | null>(null);
   const [isCloning, setIsCloning] = useState(false);
+  const [hasExistingVoiceClone, setHasExistingVoiceClone] = useState(false);
   const { uploadVoiceRecording, isUploading: isUploadingVoice } = useVoiceStorage();
 
   // Disable ALL background scrolling when modal is open
@@ -131,6 +132,17 @@ const ChooseVoice = () => {
         if (userProfile?.voice_preference) {
           console.log('✅ Loaded existing voice preference:', userProfile.voice_preference);
           dispatch({ type: 'SET_VOICE', payload: userProfile.voice_preference });
+          
+          // Check if user has an existing voice clone (not just 'custom' or 'custom_uploaded')
+          const isCustomVoiceClone = userProfile.voice_preference && 
+            userProfile.voice_preference !== 'custom' && 
+            userProfile.voice_preference !== 'custom_uploaded' &&
+            userProfile.voice_preference.length > 20; // ElevenLabs voice IDs are typically longer
+          
+          if (isCustomVoiceClone) {
+            console.log('✅ User has existing voice clone:', userProfile.voice_preference);
+            setHasExistingVoiceClone(true);
+          }
         }
         
         if (userProfile?.custom_voice_audio_path) {
@@ -156,6 +168,13 @@ const ChooseVoice = () => {
 
   const handleCustomVoiceClick = () => {
     console.log('🎯 Custom voice option clicked - showing voice modal');
+    
+    // Prevent action if user already has a voice clone
+    if (hasExistingVoiceClone) {
+      console.log('⚠️ User already has a voice clone, action blocked');
+      setSaveError('You have already created a custom voice clone. You can only create one custom voice per account.');
+      return;
+    }
     
     // If there's existing voice recording, show the completion state
     if (existingVoiceRecording) {
@@ -1080,6 +1099,9 @@ const ChooseVoice = () => {
             <div
               onClick={handleCustomVoiceClick}
               className={`flex items-center p-4 rounded-xl border-2 transition-all duration-300 cursor-pointer hover:scale-[1.02] relative overflow-hidden w-full ${
+                hasExistingVoiceClone
+                  ? 'border-gray-500/30 bg-gray-500/5 opacity-50 cursor-not-allowed'
+                  : 
                 state.voicePreference === 'custom'
                   ? 'border-purple-500 bg-purple-500/10 shadow-lg shadow-purple-500/20'
                   : state.voicePreference === 'custom_uploaded'
@@ -1088,7 +1110,7 @@ const ChooseVoice = () => {
               }`}
             >
               {/* Gradient overlay for special effect */}
-              <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-pink-500/10 opacity-50" />
+              <div className={`absolute inset-0 bg-gradient-to-r ${hasExistingVoiceClone ? 'from-gray-500/10 to-gray-500/10' : 'from-purple-500/10 to-pink-500/10'} opacity-50`} />
               
               {/* Custom Voice Avatar */}
               <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mr-4 flex-shrink-0 relative z-10">
@@ -1100,21 +1122,47 @@ const ChooseVoice = () => {
                 <div className="flex items-center justify-between mb-1">
                   <h3 className="text-lg font-semibold text-white font-heading">
                     {state.voicePreference === 'custom_uploaded' ? 'Your Custom Voice' : 'Create Your Own'}
+                    {hasExistingVoiceClone && ' (Already Created)'}
                   </h3>
                   {state.voicePreference === 'custom_uploaded' && (
                     <span className="px-2 py-1 bg-green-500/20 text-green-300 text-xs rounded-full font-medium flex-shrink-0">
                       ✓ Uploaded
                     </span>
                   )}
+                  {hasExistingVoiceClone && (
+                    <span className="px-2 py-1 bg-gray-500/20 text-gray-300 text-xs rounded-full font-medium flex-shrink-0">
+                      ✓ Created
+                    </span>
+                  )}
                 </div>
                 <p className="text-white/70 text-sm font-body">
-                  {state.voicePreference === 'custom_uploaded' 
+                  {hasExistingVoiceClone
+                    ? 'You have already created a custom voice clone'
+                    : state.voicePreference === 'custom_uploaded' 
                     ? 'Your personalized voice clone is ready'
                     : 'Record or upload your voice for a personalized experience'
                   }
                 </p>
               </div>
             </div>
+            
+            {/* Information message for users who already have a voice clone */}
+            {hasExistingVoiceClone && (
+              <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="text-white text-xs font-bold">ℹ️</span>
+                  </div>
+                  <div className="text-left">
+                    <h4 className="text-blue-400 font-semibold text-sm mb-2 font-heading">Voice Clone Already Created</h4>
+                    <p className="text-blue-300 text-xs font-body">
+                      You have already created a custom voice clone. Each account is limited to one custom voice to ensure quality and prevent abuse. 
+                      Your existing custom voice is available for selection above.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Regular Voices from ElevenLabs - Compact Mobile Layout */}
             {voices.map((voice) => {
