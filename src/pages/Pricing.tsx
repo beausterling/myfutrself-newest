@@ -94,11 +94,8 @@ const Pricing = () => {
   const getSavings = (plan: typeof plans[keyof typeof plans]) => {
     if (plan.monthlyPrice === 0 || billingCycle === 'monthly') return null;
     
-    const monthlyCost = plan.monthlyPrice * 12;
-    const annualCost = plan.annualPrice;
-    const savings = monthlyCost - annualCost;
-    
-    return savings > 0 ? `Save $${savings}/year` : null;
+    // For annual billing, show "2 months FREE" instead of dollar savings
+    return '2 months FREE';
   };
 
   return (
@@ -229,7 +226,7 @@ const Pricing = () => {
             >
               Annual
               <span className="absolute -top-2 -right-2 bg-purple-500 text-white text-xs px-2 py-0.5 rounded-full">
-                Save {getDiscountPercentage(plans.starter)}%
+                2 months FREE
               </span>
             </button>
           </div>
@@ -333,7 +330,7 @@ const Pricing = () => {
                   What's the difference between monthly and annual billing?
                 </h3>
                 <p className="text-white/80 font-body">
-                 Annual billing gives you a {getDiscountPercentage(plans.starter)}% discount. You can switch between billing cycles at any time.
+                 Annual billing gives you 2 months FREE. You can switch between billing cycles at any time.
                 </p>
               </div>
             </div>
