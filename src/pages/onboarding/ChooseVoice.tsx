@@ -393,7 +393,7 @@ const ChooseVoice = () => {
                         <Mic className="w-8 h-8 text-white" />
                       </button>
                     ) : (
-                      <div className="text-center">
+                      <div className="text-center space-y-4">
                         <button
                           onClick={stopRecording}
                           className="w-20 h-20 bg-red-500 rounded-full flex items-center justify-center mx-auto animate-pulse"
@@ -401,6 +401,29 @@ const ChooseVoice = () => {
                           <Square className="w-8 h-8 text-white" />
                         </button>
                         <p className="text-white/70 text-base mt-2">{recordingTime}s / 30s</p>
+                        
+                        {/* Recording Script */}
+                        <div className="bg-white/5 border border-white/10 rounded-lg p-4 text-left max-h-48 overflow-y-auto">
+                          <p className="text-white/90 text-sm leading-relaxed font-body">
+                            <span className="text-blue-300 font-medium">[Calm]</span><br />
+                            Hey, it is your future self. I'm talking to you from a few years ahead.
+                            <br /><br />
+                            <span className="text-green-300 font-medium">[Optimistic]</span><br />
+                            Life turned out okay. It's better than you feared.
+                            <br /><br />
+                            <span className="text-yellow-300 font-medium">[Upbeat]</span><br />
+                            You finished that project you were working on and it finally paid off!
+                            <br /><br />
+                            <span className="text-purple-300 font-medium">[Soft]</span><br />
+                            Hard days still happen. But when they do, just take a slow breath and drink some water. It helps.
+                            <br /><br />
+                            <span className="text-orange-300 font-medium">[Encouraging]</span><br />
+                            Show up every day, even when the goal feels far away. Small decisions add up quickly.
+                            <br /><br />
+                            <span className="text-cyan-300 font-medium">[Confident]</span><br />
+                            I am proof that it works. Keep going. We'll talk again soon.
+                          </p>
+                        </div>
                       </div>
                     )
                   ) : (
