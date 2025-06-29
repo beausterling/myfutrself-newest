@@ -23,6 +23,8 @@ const ChooseVoice = () => {
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [recordingInterval, setRecordingInterval] = useState<NodeJS.Timeout | null>(null);
+  const [showRecordingWindow, setShowRecordingWindow] = useState(false);
+  const [microphonePermissionGranted, setMicrophonePermissionGranted] = useState(false);
 
   const {
     voices,
@@ -126,21 +128,61 @@ const ChooseVoice = () => {
     if (recordingInterval) {
       clearInterval(recordingInterval);
     }
+    setShowRecordingWindow(false);
+    setMicrophonePermissionGranted(false);
   };
 
-  const startRecording = async () => {
+  const requestMicrophonePermission = async () => {
     try {
+      console.log('🎤 Requesting microphone permission...');
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
+      
+      // Stop the stream immediately after permission is granted
+      stream.getTracks().forEach(track => track.stop());
+      
+      console.log('✅ Microphone permission granted');
+      setMicrophonePermissionGranted(true);
+      setShowRecordingWindow(true);
+      
+    } catch (error) {
+      console.error('❌ Microphone permission denied:', error);
+      setSaveError('Microphone access is required to record your voice. Please allow microphone access and try again.');
+    }
+  };
+
+  const startActualRecording = async () => {
+    try {
+      console.log('🎤 Starting actual recording...');
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      const recorder = new MediaRecorder(stream, {
+        mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4'
+      });
+      
       const chunks: BlobPart[] = [];
 
       recorder.ondataavailable = (event) => {
-        chunks.push(event.data);
+        if (event.data.size > 0) {
+          chunks.push(event.data);
+        }
       };
 
       recorder.onstop = () => {
-        const blob = new Blob(chunks, { type: 'audio/wav' });
+        console.log('🎤 Recording stopped, creating blob...');
+        const mimeType = recorder.mimeType || 'audio/webm';
+        const blob = new Blob(chunks, { type: mimeType });
         setAudioBlob(blob);
+        
+        // Stop all tracks
+        stream.getTracks().forEach(track => track.stop());
+        
+        console.log('✅ Recording completed successfully');
+      };
+
+      recorder.onerror = (event) => {
+        console.error('❌ Recording error:', event);
+        setSaveError('Recording failed. Please try again.');
+        setIsRecording(false);
         stream.getTracks().forEach(track => track.stop());
       };
 
@@ -149,31 +191,38 @@ const ChooseVoice = () => {
       setIsRecording(true);
       setRecordingTime(0);
 
+      // Auto-stop after 30 seconds
       const interval = setInterval(() => {
         setRecordingTime(prev => {
-          if (prev >= 30) {
+          const newTime = prev + 1;
+          if (newTime >= 30) {
+            console.log('🕐 30 seconds reached, stopping recording...');
             recorder.stop();
             setIsRecording(false);
             clearInterval(interval);
+            setRecordingInterval(null);
             return 30;
           }
-          return prev + 1;
+          return newTime;
         });
       }, 1000);
       setRecordingInterval(interval);
 
     } catch (error) {
-      console.error('Error starting recording:', error);
-      setSaveError('Failed to access microphone. Please check permissions.');
+      console.error('❌ Error starting recording:', error);
+      setSaveError('Failed to start recording. Please check your microphone and try again.');
+      setIsRecording(false);
     }
   };
 
-  const stopRecording = () => {
+  const stopActualRecording = () => {
+    console.log('🛑 Manually stopping recording...');
     if (mediaRecorder && isRecording) {
       mediaRecorder.stop();
       setIsRecording(false);
       if (recordingInterval) {
         clearInterval(recordingInterval);
+        setRecordingInterval(null);
       }
     }
   };
@@ -204,8 +253,10 @@ const ChooseVoice = () => {
       dispatch({ type: 'SET_VOICE', payload: 'custom_uploaded' });
       
       setShowVoiceModal(false);
+      setShowRecordingWindow(false);
       setAudioBlob(null);
       setRecordingTime(0);
+      setMicrophonePermissionGranted(false);
       
       console.log('✅ Custom voice uploaded successfully');
     } catch (error) {
@@ -367,125 +418,205 @@ const ChooseVoice = () => {
       {/* Voice Recording/Upload Modal */}
       {showVoiceModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-bg-primary border border-white/20 rounded-2xl p-6 max-w-md w-full relative">
-            <button
-              onClick={handleVoiceModalClose}
-              className="absolute top-4 right-4 text-white/60 hover:text-white transition-colors"
-            >
-              <X className="w-6 h-6" />
-            </button>
-            
-            <div className="text-center">
-              <h3 className="text-2xl font-bold mb-3 font-heading">Create Your Custom Voice</h3>
-              <p className="text-white/70 mb-6 text-sm font-body">
-                Record or upload 30 seconds of your voice
-              </p>
+          {!showRecordingWindow ? (
+            <div className="bg-bg-primary border border-white/20 rounded-2xl p-6 max-w-md w-full relative">
+              <button
+                onClick={handleVoiceModalClose}
+                className="absolute top-4 right-4 text-white/60 hover:text-white transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
               
-              <div className="space-y-4">
-                {/* Simple Recording Button */}
-                <div className="text-center">
-                  {!audioBlob ? (
-                    !isRecording ? (
+              <div className="text-center">
+                <h3 className="text-2xl font-bold mb-3 font-heading">Create Your Custom Voice</h3>
+                <p className="text-white/70 mb-6 text-sm font-body">
+                  Record or upload 30 seconds of your voice
+                </p>
+                
+                <div className="space-y-4">
+                  {/* Simple Recording Button */}
+                  <div className="text-center">
+                    {!audioBlob ? (
                       <button
-                        onClick={startRecording}
+                        onClick={requestMicrophonePermission}
                         className="w-20 h-20 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center mx-auto transition-all duration-300 hover:scale-105"
                       >
                         <Mic className="w-8 h-8 text-white" />
                       </button>
                     ) : (
-                      <div className="text-center space-y-4">
+                      <div className="text-center">
+                        <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-2">
+                          <Mic className="w-8 h-8 text-white" />
+                        </div>
+                        <p className="text-green-400 text-base">✓ Recording completed ({recordingTime}s)</p>
                         <button
-                          onClick={stopRecording}
-                          className="w-20 h-20 bg-red-500 rounded-full flex items-center justify-center mx-auto animate-pulse"
+                          onClick={() => {
+                            setAudioBlob(null);
+                            setRecordingTime(0);
+                          }}
+                          className="text-white/60 text-xs underline mt-1 hover:text-white"
                         >
-                          <Square className="w-8 h-8 text-white" />
+                          Record again
                         </button>
-                        <p className="text-white/70 text-base mt-2">{recordingTime}s / 30s</p>
-                        
-                        {/* Recording Script */}
-                        <div className="bg-white/5 border border-white/10 rounded-lg p-4 text-left max-h-48 overflow-y-auto">
-                          <p className="text-white/90 text-sm leading-relaxed font-body">
-                            <span className="text-blue-300 font-medium">[Calm]</span><br />
-                            Hey, it is your future self. I'm talking to you from a few years ahead.
-                            <br /><br />
-                            <span className="text-green-300 font-medium">[Optimistic]</span><br />
-                            Life turned out okay. It's better than you feared.
-                            <br /><br />
-                            <span className="text-yellow-300 font-medium">[Upbeat]</span><br />
-                            You finished that project you were working on and it finally paid off!
-                            <br /><br />
-                            <span className="text-purple-300 font-medium">[Soft]</span><br />
-                            Hard days still happen. But when they do, just take a slow breath and drink some water. It helps.
-                            <br /><br />
-                            <span className="text-orange-300 font-medium">[Encouraging]</span><br />
-                            Show up every day, even when the goal feels far away. Small decisions add up quickly.
-                            <br /><br />
-                            <span className="text-cyan-300 font-medium">[Confident]</span><br />
-                            I am proof that it works. Keep going. We'll talk again soon.
-                          </p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Compact Upload Section */}
+                  <div className="text-center">
+                    <p className="text-white/60 text-sm mb-3">or</p>
+                    <label className="block">
+                      <input
+                        type="file"
+                        accept="audio/*"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                      />
+                      <div className="border border-dashed border-white/30 rounded-lg p-3 text-center hover:border-white/50 transition-colors cursor-pointer">
+                        <Upload className="w-5 h-5 text-white/60 mx-auto mb-1" />
+                        <p className="text-white/70 text-base">Upload audio file</p>
+                        <p className="text-white/50 text-sm">MP3, WAV, M4A (30s max)</p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+                
+                {/* Compact Bottom Buttons */}
+                <div className="flex gap-2 mt-6">
+                  <button
+                    onClick={handleVoiceModalClose}
+                    className="flex-1 px-4 py-2 text-base border border-white/20 rounded-lg text-white/80 hover:text-white hover:border-white/40 transition-colors font-heading"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleVoiceSubmit}
+                    disabled={!audioBlob}
+                    className={`flex-1 px-4 py-2 text-base rounded-lg font-heading transition-colors ${
+                      audioBlob 
+                        ? 'bg-primary-aqua hover:bg-primary-aqua/80 text-white' 
+                        : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                    }`}
+                  >
+                    Submit
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* Recording Window */
+            <div className="bg-bg-primary border border-white/20 rounded-2xl p-6 max-w-lg w-full relative">
+              <button
+                onClick={() => {
+                  if (isRecording) {
+                    stopActualRecording();
+                  }
+                  setShowRecordingWindow(false);
+                  setMicrophonePermissionGranted(false);
+                }}
+                className="absolute top-4 right-4 text-white/60 hover:text-white transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+              
+              <div className="text-center">
+                <h3 className="text-2xl font-bold mb-4 font-heading">Record Your Voice</h3>
+                
+                {/* Recording Controls */}
+                <div className="mb-6">
+                  {!isRecording ? (
+                    <div className="flex items-center justify-center gap-4">
+                      <button
+                        onClick={startActualRecording}
+                        className="w-16 h-16 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-105"
+                      >
+                        <Mic className="w-6 h-6 text-white" />
+                      </button>
+                      <span className="text-lg font-medium text-white font-heading">Start Recording</span>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-center gap-4">
+                        <button
+                          onClick={stopActualRecording}
+                          className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center animate-pulse"
+                        >
+                          <Square className="w-6 h-6 text-white" />
+                        </button>
+                        <div className="text-left">
+                          <div className="text-lg font-medium text-white font-heading">Recording...</div>
+                          <div className="text-white/70">{recordingTime}s / 30s</div>
                         </div>
                       </div>
-                    )
-                  ) : (
-                    <div className="text-center">
-                      <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-2">
-                        <Mic className="w-8 h-8 text-white" />
-                      </div>
-                      <p className="text-green-400 text-base">✓ Recording completed ({recordingTime}s)</p>
-                      <button
-                        onClick={() => {
-                          setAudioBlob(null);
-                          setRecordingTime(0);
-                        }}
-                        className="text-white/60 text-xs underline mt-1 hover:text-white"
-                      >
-                        Record again
-                      </button>
                     </div>
                   )}
                 </div>
                 
-                {/* Compact Upload Section */}
-                <div className="text-center">
-                  <p className="text-white/60 text-sm mb-3">or</p>
-                  <label className="block">
-                    <input
-                      type="file"
-                      accept="audio/*"
-                      onChange={handleFileUpload}
-                      className="hidden"
-                    />
-                    <div className="border border-dashed border-white/30 rounded-lg p-3 text-center hover:border-white/50 transition-colors cursor-pointer">
-                      <Upload className="w-5 h-5 text-white/60 mx-auto mb-1" />
-                      <p className="text-white/70 text-base">Upload audio file</p>
-                      <p className="text-white/50 text-sm">MP3, WAV, M4A (30s max)</p>
-                    </div>
-                  </label>
+                {/* Recording Script */}
+                <div className="bg-white/5 border border-white/10 rounded-lg p-4 text-left">
+                  <h4 className="text-lg font-semibold mb-3 text-center text-white font-heading">Read this script:</h4>
+                  <div className="text-white/90 text-sm leading-relaxed font-body space-y-2">
+                    <p>
+                      <span className="text-blue-300 font-medium">[Calm]</span><br />
+                      Hey, it is your future self. I'm talking to you from a few years ahead.
+                    </p>
+                    <p>
+                      <span className="text-green-300 font-medium">[Optimistic]</span><br />
+                      Life turned out okay. It's better than you feared.
+                    </p>
+                    <p>
+                      <span className="text-yellow-300 font-medium">[Upbeat]</span><br />
+                      You finished that project you were working on and it finally paid off!
+                    </p>
+                    <p>
+                      <span className="text-purple-300 font-medium">[Soft]</span><br />
+                      Hard days still happen. But when they do, just take a slow breath and drink some water. It helps.
+                    </p>
+                    <p>
+                      <span className="text-orange-300 font-medium">[Encouraging]</span><br />
+                      Show up every day, even when the goal feels far away. Small decisions add up quickly.
+                    </p>
+                    <p>
+                      <span className="text-cyan-300 font-medium">[Confident]</span><br />
+                      I am proof that it works. Keep going. We'll talk again soon.
+                    </p>
+                  </div>
                 </div>
-              </div>
-              
-              {/* Compact Bottom Buttons */}
-              <div className="flex gap-2 mt-6">
-                <button
-                  onClick={handleVoiceModalClose}
-                  className="flex-1 px-4 py-2 text-base border border-white/20 rounded-lg text-white/80 hover:text-white hover:border-white/40 transition-colors font-heading"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleVoiceSubmit}
-                  disabled={!audioBlob}
-                  className={`flex-1 px-4 py-2 text-base rounded-lg font-heading transition-colors ${
-                    audioBlob 
-                      ? 'bg-primary-aqua hover:bg-primary-aqua/80 text-white' 
-                      : 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                  }`}
-                >
-                  Submit
-                </button>
+                
+                {/* Recording completed state */}
+                {audioBlob && (
+                  <div className="mt-4 p-3 bg-green-500/20 border border-green-500/30 rounded-lg">
+                    <p className="text-green-400 font-medium">✓ Recording completed successfully!</p>
+                    <p className="text-white/70 text-sm">Duration: {recordingTime} seconds</p>
+                  </div>
+                )}
+                
+                {/* Bottom buttons for recording window */}
+                {audioBlob && (
+                  <div className="flex gap-2 mt-4">
+                    <button
+                      onClick={() => {
+                        setAudioBlob(null);
+                        setRecordingTime(0);
+                      }}
+                      className="flex-1 px-4 py-2 text-base border border-white/20 rounded-lg text-white/80 hover:text-white hover:border-white/40 transition-colors font-heading"
+                    >
+                      Record Again
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowRecordingWindow(false);
+                        // Keep the audioBlob so it shows as completed in the main modal
+                      }}
+                      className="flex-1 px-4 py-2 text-base bg-primary-aqua hover:bg-primary-aqua/80 text-white rounded-lg font-heading transition-colors"
+                    >
+                      Use Recording
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 
@@ -649,6 +780,44 @@ const ChooseVoice = () => {
                       <Play className="w-4 h-4 ml-0.5" />
                     )}
                   </button>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <AlertCircle className="w-12 h-12 text-white/40 mx-auto mb-4" />
+            <p className="text-white/60 font-body">
+              No voices available. Please check your configuration.
+            </p>
+          </div>
+        )}
+
+        <div className="mt-16 flex justify-between max-w-md mx-auto">
+          <button 
+            onClick={handleBack} 
+            className="btn btn-outline text-lg px-8 py-4 font-heading"
+          >
+            Back
+          </button>
+          <button
+            onClick={handleNext}
+            className={`text-lg px-8 py-4 font-heading transition-all duration-300 rounded-xl border ${
+              state.voicePreference && state.voicePreference !== 'custom'
+                ? 'btn btn-primary'
+                : 'bg-transparent text-gray-400 border-gray-600 cursor-not-allowed hover:bg-transparent'
+            }`}
+            disabled={!state.voicePreference || state.voicePreference === 'custom'}
+          >
+            Continue
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ChooseVoice;
                 </div>
               );
             })}
