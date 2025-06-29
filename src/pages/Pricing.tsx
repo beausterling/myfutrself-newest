@@ -71,7 +71,7 @@ const Pricing = () => {
           >
             <h1 className="text-4xl md:text-6xl font-bold mb-6 font-heading">
               Choose Your{' '}
-              <span className="gradient-text">Transformation</span>
+              <span className="gradient-text">Future</span>
             </h1>
             <p className="text-xl md:text-2xl text-text-secondary mb-8 font-body leading-relaxed">
               Unlock your potential with personalized coaching from your future self. 
