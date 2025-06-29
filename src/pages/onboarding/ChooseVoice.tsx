@@ -30,6 +30,7 @@ const ChooseVoice = () => {
   const [playbackAudio, setPlaybackAudio] = useState<HTMLAudioElement | null>(null);
   const [existingVoiceRecording, setExistingVoiceRecording] = useState<string | null>(null);
   const [isCloning, setIsCloning] = useState(false);
+  const [hasExistingVoicePreference, setHasExistingVoicePreference] = useState(false);
   const { uploadVoiceRecording, isUploading: isUploadingVoice } = useVoiceStorage();
 
   // Disable ALL background scrolling when modal is open
@@ -131,6 +132,12 @@ const ChooseVoice = () => {
         if (userProfile?.voice_preference) {
           console.log('✅ Loaded existing voice preference:', userProfile.voice_preference);
           dispatch({ type: 'SET_VOICE', payload: userProfile.voice_preference });
+          
+          // Check if user has a non-null voice preference (excluding 'custom' which means incomplete)
+          setHasExistingVoicePreference(
+            userProfile.voice_preference !== null && 
+            userProfile.voice_preference !== 'custom'
+          );
         }
         
         if (userProfile?.custom_voice_audio_path) {
@@ -1099,7 +1106,8 @@ const ChooseVoice = () => {
               <div className="flex-grow min-w-0 relative z-10">
                 <div className="flex items-center justify-between mb-1">
                   <h3 className="text-lg font-semibold text-white font-heading">
-                    {state.voicePreference === 'custom_uploaded' ? 'Your Custom Voice' : 'Create Your Own'}
+                    {state.voicePreference === 'custom_uploaded' ? 'Your Custom Voice' : 
+                     hasExistingVoicePreference ? 'Replace Current Voice' : 'Create Your Own'}
                   </h3>
                   {state.voicePreference === 'custom_uploaded' && (
                     <span className="px-2 py-1 bg-green-500/20 text-green-300 text-xs rounded-full font-medium flex-shrink-0">
@@ -1110,6 +1118,8 @@ const ChooseVoice = () => {
                 <p className="text-white/70 text-sm font-body">
                   {state.voicePreference === 'custom_uploaded' 
                     ? 'Your personalized voice clone is ready'
+                    : hasExistingVoicePreference 
+                    ? 'Record or upload a new voice to replace your current selection'
                     : 'Record or upload your voice for a personalized experience'
                   }
                 </p>
