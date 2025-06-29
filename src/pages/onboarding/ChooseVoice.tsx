@@ -30,6 +30,7 @@ const ChooseVoice = () => {
   const [playbackAudio, setPlaybackAudio] = useState<HTMLAudioElement | null>(null);
   const [existingVoiceRecording, setExistingVoiceRecording] = useState<string | null>(null);
   const [isLoadingCustomVoice, setIsLoadingCustomVoice] = useState(false);
+  const [isProcessingVoiceClone, setIsProcessingVoiceClone] = useState(false);
   const { 
     uploadVoiceRecording, 
     downloadVoiceRecording,
@@ -560,6 +561,92 @@ const ChooseVoice = () => {
     }
   };
 
+  // Clone voice using ElevenLabs Edge Function
+  const cloneCustomVoice = async (): Promise<boolean> => {
+    if (!user?.id) {
+      setSaveError('User authentication required for voice cloning');
+      return false;
+    }
+
+    if (!existingVoiceRecording) {
+      setSaveError('No voice recording found to clone');
+      return false;
+    }
+
+    try {
+      setIsProcessingVoiceClone(true);
+      setSaveError(null);
+      console.log('🎤 Starting voice cloning process for user:', user.id);
+      console.log('📁 Voice recording path:', existingVoiceRecording);
+
+      // Get authentication token
+      const token = await getToken({ template: 'supabase' });
+      if (!token) {
+        throw new Error('No authentication token available');
+      }
+
+      // Construct Edge Function URL
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      if (!supabaseUrl) {
+        throw new Error('Supabase URL not configured');
+      }
+
+      const edgeFunctionUrl = `${supabaseUrl}/functions/v1/elevenlabs-voice-clone`;
+      console.log('🔗 Edge Function URL:', edgeFunctionUrl);
+
+      // Prepare request payload
+      const requestPayload = {
+        user_id: user.id,
+        custom_voice_audio_path: existingVoiceRecording,
+        voice_name: `${user.firstName || user.id}_custom_voice`,
+        voice_description: 'Custom voice clone created by MyFutrSelf'
+      };
+
+      console.log('📤 Sending voice clone request:', requestPayload);
+
+      // Make request to Edge Function
+      const response = await fetch(edgeFunctionUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(requestPayload)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('❌ Voice cloning Edge Function error:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData
+        });
+        throw new Error(errorData.error || `Voice cloning failed: ${response.status} ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ Voice cloning successful:', result);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Voice cloning failed');
+      }
+
+      console.log('🎉 Voice cloned successfully with ID:', result.voice_id);
+      
+      // Update the voice preference in the context to the new cloned voice ID
+      dispatch({ type: 'SET_VOICE', payload: result.voice_id });
+      
+      return true;
+
+    } catch (error) {
+      console.error('❌ Voice cloning failed:', error);
+      setSaveError(error instanceof Error ? error.message : 'Failed to clone voice. Please try again.');
+      return false;
+    } finally {
+      setIsProcessingVoiceClone(false);
+    }
+  };
+
   const handleVoicePreview = (voiceId: string, voiceName: string) => {
     if (isPlaying === voiceId) {
       stopVoice();
@@ -659,15 +746,475 @@ const ChooseVoice = () => {
     }
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (!state.voicePreference) {
       setSaveError('Please select a voice to continue.');
       return;
     }
 
-    // Save voice preference before proceeding (for non-custom voices)
-    if (state.voicePreference !== 'custom' && state.voicePreference !== 'custom_uploaded') {
-      saveVoicePreference().then(() => {
+    try {
+      setIsSaving(true);
+      setSaveError(null);
+      
+      // Handle custom voice cloning
+      if (state.voicePreference === 'custom_uploaded' && existingVoiceRecording) {
+        console.log('🎤 Custom voice selected, initiating voice cloning process');
+        
+        const cloneSuccess = await cloneCustomVoice();
+        if (!cloneSuccess) {
+          console.error('❌ Voice cloning failed, cannot proceed');
+          return; // Don't proceed if cloning failed
+        }
+        
+        console.log('✅ Voice cloning completed, proceeding to next step');
+      } else if (state.voicePreference !== 'custom' && state.voicePreference !== 'custom_uploaded') {
+        // Save voice preference for pre-defined voices
+        console.log('🎯 Pre-defined voice selected, saving preference');
+        await saveVoicePreference();
+      }
+      
+      // Proceed to next step
+      dispatch({ type: 'NEXT_STEP' });
+      navigate('/onboarding/twilio-setup');
+      
+    } catch (error) {
+      console.error('❌ Error in handleNext:', error);
+      setSaveError(error instanceof Error ? error.message : 'An unexpected error occurred. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleBack = () => {
+    if (isProcessingVoiceClone || isSaving) {
+      console.log('⚠️ Cannot go back while processing voice clone or saving');
+      return;
+    }
+    
+    dispatch({ type: 'PREV_STEP' });
+    navigate('/onboarding/call-prefs');
+  };
+
+  // Show loading state
+  if (isLoading) {
+    return null; // Let the main loading screen handle this
+  }
+
+  return (
+    <div className={`onboarding-container ${isScrolled ? 'scrolled' : ''}`}>
+      {/* Voice Recording/Upload Modal */}
+      {showVoiceModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-bg-primary border border-white/20 rounded-2xl p-6 max-w-md w-full relative">
+            <button
+              onClick={handleVoiceModalClose}
+              className="absolute top-4 right-4 text-white/60 hover:text-white transition-colors"
+              disabled={isLoadingCustomVoice}
+            >
+              <X className="w-6 h-6" />
+            </button>
+            
+            <div className="text-center">
+              <h3 className="text-2xl font-bold mb-3 font-heading">Create Your Custom Voice</h3>
+              <p className="text-white/70 mb-6 text-sm font-body">
+                {isRecording ? 'Recording in progress...' : audioBlob ? 'Recording completed!' : 'Ready to record your voice'}
+              </p>
+              
+              {/* Loading Indicator for Downloading Existing Recording */}
+              {isLoadingCustomVoice && (
+                <div className="text-center mb-6">
+                  <div className="w-24 h-24 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  </div>
+                  <p className="text-blue-400 text-lg font-bold">Loading your voice recording...</p>
+                  <p className="text-white/70 text-sm">Please wait while we fetch your custom voice</p>
+                </div>
+              )}
+              
+              {/* Start Recording Button - Only show when not recording and no audio */}
+              {!isRecording && !audioBlob && !isLoadingCustomVoice && (
+                <div className="text-center mb-6">
+                  <button
+                    onClick={startRecording}
+                    disabled={isLoadingCustomVoice}
+                    className="w-24 h-24 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4 hover:scale-105 transition-transform"
+                  >
+                    <Mic className="w-10 h-10 text-white" />
+                  </button>
+                  <p className="text-white font-medium">Click to start recording</p>
+                  <p className="text-white/60 text-sm">30 seconds maximum</p>
+                </div>
+              )}
+
+              {/* Recording Status Display */}
+              {!isLoadingCustomVoice && <div className="mb-6">
+                {isRecording && (
+                  <div className="text-center space-y-4">
+                    <div className="w-24 h-24 bg-red-500 rounded-full flex items-center justify-center mx-auto animate-pulse">
+                      <Mic className="w-10 h-10 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-white text-xl font-bold">{recordingTime}s / 30s</p>
+                      <button
+                        onClick={stopRecording}
+                        className="mt-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                        disabled={isLoadingCustomVoice}
+                      >
+                        <Square className="w-4 h-4 inline mr-2" />
+                        Stop Recording
+                      </button>
+                    </div>
+                  </div>
+                )}
+                
+                {audioBlob && (
+                  <div className="text-center">
+                    <div className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Check className="w-10 h-10 text-white" />
+                    </div>
+                    <p className="text-green-400 text-lg font-bold">
+                      {existingVoiceRecording ? 'Voice Recording Ready!' : 'Recording Complete!'}
+                    </p>
+                    <p className="text-white/70 text-sm">
+                      {existingVoiceRecording 
+                        ? 'Your custom voice is saved and ready to use'
+                        : `Duration: ${recordingTime} seconds`
+                      }
+                    </p>
+                    
+                    {/* Playback Controls */}
+                    <div className="flex justify-center gap-3 mt-4">
+                      <button
+                        onClick={isPlayingRecording ? stopPlayback : playRecording}
+                        className="btn btn-outline flex items-center gap-2"
+                        disabled={isLoadingCustomVoice}
+                      >
+                        {isPlayingRecording ? (
+                          <>
+                            <Pause className="w-4 h-4" />
+                            Stop
+                          </>
+                        ) : (
+                          <>
+                            <Play className="w-4 h-4" />
+                            Play
+                          </>
+                        )}
+                      </button>
+                      
+                      <button
+                        onClick={startNewRecording}
+                        disabled={(isPlayingRecording && !existingVoiceRecording) || isLoadingCustomVoice}
+                        className={`btn transition-all duration-300 flex items-center gap-2 ${
+                          (isPlayingRecording && !existingVoiceRecording)
+                            ? 'bg-transparent text-gray-400 border border-gray-600 cursor-not-allowed hover:bg-transparent'
+                            : 'btn-outline'
+                        }`}
+                      >
+                        <RotateCcw className="w-4 h-4" />
+                        Record Again
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>}
+
+              {/* Helpful Tips Section */}
+              {!isRecording && !audioBlob && !isLoadingCustomVoice && (
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 mb-6">
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="text-white text-xs font-bold">💡</span>
+                    </div>
+                    <div className="text-left">
+                      <h4 className="text-blue-400 font-semibold text-sm mb-2 font-heading">Tip for Best Results</h4>
+                      <ul className="text-blue-300 text-xs space-y-1 font-body">
+                        <li>• Find a quiet environment, use your best microphone, and maintain consistent distance from the mic.</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Upload Option - Only show when not recording and no audio */}
+              {!isRecording && !audioBlob && !isLoadingCustomVoice && (
+                <div className="text-center mb-6">
+                  <p className="text-white/60 text-sm mb-3">or</p>
+                  <label className="block">
+                    <input
+                      type="file"
+                      accept="audio/*"
+                      onChange={handleFileUpload}
+                      disabled={isLoadingCustomVoice}
+                      className="hidden"
+                    />
+                    <div className="border border-dashed border-white/30 rounded-lg p-3 text-center hover:border-white/50 transition-colors cursor-pointer">
+                      <Upload className="w-5 h-5 text-white/60 mx-auto mb-1" />
+                      <p className="text-white/70 text-sm">Upload audio file</p>
+                      <p className="text-white/50 text-xs">MP3, WAV, M4A (30s max)</p>
+                    </div>
+                  </label>
+                </div>
+              )}
+              
+              {/* Upload Option - Show above buttons when recording is complete */}
+              {audioBlob && !isRecording && !isLoadingCustomVoice && (
+                <div className="text-center mb-6">
+                  <p className="text-white/60 text-sm mb-3">or upload a different file</p>
+                  <label className="block">
+                    <input
+                      type="file"
+                      accept="audio/*"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                    <div className="border border-dashed border-white/30 rounded-lg p-3 text-center hover:border-white/50 transition-colors cursor-pointer">
+                      <Upload className="w-5 h-5 text-white/60 mx-auto mb-1" />
+                      <p className="text-white/70 text-sm">Upload different audio file</p>
+                      <p className="text-white/50 text-xs">MP3, WAV, M4A (30s max)</p>
+                    </div>
+                  </label>
+                </div>
+              )}
+              
+              {/* Bottom Buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={handleVoiceModalClose}
+                  disabled={isLoadingCustomVoice}
+                  className="flex-1 btn btn-outline font-heading"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleVoiceSubmit}
+                  disabled={(!audioBlob && !existingVoiceRecording) || isRecording || isUploadingVoice || isSaving || isLoadingCustomVoice}
+                  className={`flex-1 btn font-heading transition-all duration-300 ${
+                    (audioBlob || existingVoiceRecording) && !isRecording && !isUploadingVoice && !isSaving
+                      ? 'btn-primary' 
+                      : 'bg-transparent text-gray-400 border border-gray-600 cursor-not-allowed hover:bg-transparent'
+                  }`}
+                >
+                  {isRecording ? 'Recording...' : 
+                   isUploadingVoice || isSaving || isLoadingCustomVoice ? (
+                     <>
+                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                       {existingVoiceRecording ? 'Processing...' : 'Uploading...'}
+                     </>
+                   ) : existingVoiceRecording ? 'Continue' : 'Submit'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main content */}
+      <div className="onboarding-content container mx-auto px-4 max-w-2xl">
+        <div className="text-center mb-12">
+          <h1 className="text-3xl md:text-4xl font-bold mb-6 font-heading">Choose Your Future Self's Voice</h1>
+          <p className="text-text-secondary text-lg leading-relaxed font-body">
+            Select the voice that will guide and motivate you on your journey.
+          </p>
+        </div>
+
+        {/* Error Display */}
+        {(voicesError || saveError) && (
+          <div className="mb-8 p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-red-400 font-medium font-heading">Error</p>
+                <p className="text-red-300 text-sm mt-1 font-body">
+                  {voicesError || saveError}
+                </p>
+                {voicesError && (
+                  <button
+                    onClick={refetchVoices}
+                    className="text-red-300 text-sm underline mt-2 hover:text-red-200 font-body"
+                  >
+                    Try Again
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    setSaveError(null);
+                  }}
+                  className="text-red-300 text-sm underline mt-2 ml-4 hover:text-red-200 font-body"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Processing Indicator */}
+        {(isSaving || isProcessingVoiceClone) && (
+          <div className="mb-8 p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+            <div className="flex items-center gap-3">
+              <div className="w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+              <p className="text-blue-400 font-medium font-heading">
+                {isProcessingVoiceClone ? 'Creating your custom voice clone...' : 'Saving your voice preference...'}
+              </p>
+            </div>
+            {isProcessingVoiceClone && (
+              <p className="text-blue-300 text-sm mt-2 font-body">
+                This may take a few moments. Please don't close this page.
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Voices List - Mobile Optimized */}
+        {voices.length > 0 ? (
+          <div className="space-y-3 max-w-2xl mx-auto">
+            {/* Create Your Own Voice Option - Now at the top */}
+            <div
+              onClick={handleCustomVoiceClick}
+              className={`flex items-center p-4 rounded-xl border-2 transition-all duration-300 cursor-pointer hover:scale-[1.02] relative overflow-hidden w-full ${
+                state.voicePreference === 'custom'
+                  ? 'border-purple-500 bg-purple-500/10 shadow-lg shadow-purple-500/20'
+                  : state.voicePreference === 'custom_uploaded'
+                  ? 'border-green-500 bg-green-500/10 shadow-lg shadow-green-500/20'
+                  : 'border-purple-500/30 bg-gradient-to-r from-purple-500/5 to-pink-500/5 hover:border-purple-500/50'
+              }`}
+            >
+              {/* Gradient overlay for special effect */}
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-pink-500/10 opacity-50" />
+              
+              {/* Custom Voice Avatar */}
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mr-4 flex-shrink-0 relative z-10">
+                <Mic className="w-6 h-6 text-white" />
+              </div>
+
+              {/* Custom Voice Info */}
+              <div className="flex-grow min-w-0 relative z-10">
+                <div className="flex items-center justify-between mb-1">
+                  <h3 className="text-lg font-semibold text-white font-heading">
+                    {state.voicePreference === 'custom_uploaded' ? 'Your Custom Voice' : 'Create Your Own'}
+                  </h3>
+                  {state.voicePreference === 'custom_uploaded' && (
+                    <span className="px-2 py-1 bg-green-500/20 text-green-300 text-xs rounded-full font-medium flex-shrink-0">
+                      ✓ Uploaded
+                    </span>
+                  )}
+                </div>
+                <p className="text-white/70 text-sm font-body">
+                  {state.voicePreference === 'custom_uploaded' 
+                    ? 'Your personalized voice clone is ready'
+                    : 'Record or upload your voice for a personalized experience'
+                  }
+                </p>
+              </div>
+            </div>
+
+            {/* Regular Voices from ElevenLabs - Compact Mobile Layout */}
+            {voices.map((voice) => {
+              const firstName = getFirstName(voice.name);
+              const isCurrentlyPlaying = isPlaying === voice.voice_id;
+              const isCurrentlyBuffering = isBuffering === voice.voice_id;
+              const progress = audioProgress[voice.voice_id] || 0;
+
+              return (
+                <div
+                  key={voice.voice_id}
+                  onClick={() => handleVoiceSelect(voice.voice_id)}
+                  className={`flex items-center p-4 rounded-xl border-2 transition-all duration-300 cursor-pointer hover:scale-[1.02] ${
+                    state.voicePreference === voice.voice_id
+                      ? 'border-primary-aqua bg-primary-aqua/10 shadow-lg shadow-primary-aqua/20'
+                      : 'border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10'
+                  }`}
+                >
+                  {/* Voice Avatar */}
+                  <div 
+                    className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg mr-4 flex-shrink-0"
+                    style={{ background: getVoiceColor(voice.name) }}
+                  >
+                    {firstName.charAt(0).toUpperCase()}
+                  </div>
+
+                  {/* Voice Info */}
+                  <div className="flex-grow min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <h3 className="text-lg font-semibold text-white font-heading truncate pr-2">
+                        {firstName}
+                      </h3>
+                    </div>
+                    
+                    {/* Progress Bar - Only show when playing */}
+                    {(isCurrentlyPlaying || isCurrentlyBuffering) && (
+                      <div className="w-full bg-white/20 rounded-full h-1 mb-2">
+                        <div 
+                          className="bg-primary-aqua h-1 rounded-full transition-all duration-300"
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Play Button */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleVoicePreview(voice.voice_id, voice.name);
+                    }}
+                    disabled={isBuffering && isBuffering !== voice.voice_id}
+                    className={`ml-3 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 flex-shrink-0 ${
+                      isCurrentlyBuffering
+                        ? 'bg-yellow-500 text-white'
+                        : isCurrentlyPlaying
+                        ? 'bg-red-500 hover:bg-red-600 text-white'
+                        : 'bg-primary-aqua hover:bg-primary-aqua/80 text-white'
+                    } ${isBuffering && isBuffering !== voice.voice_id ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110'}`}
+                  >
+                    {isCurrentlyBuffering ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : isCurrentlyPlaying ? (
+                      <Pause className="w-4 h-4" />
+                    ) : (
+                      <Play className="w-4 h-4 ml-0.5" />
+                    )}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <AlertCircle className="w-12 h-12 text-white/40 mx-auto mb-4" />
+            <p className="text-white/60 font-body">
+              No voices available. Please check your configuration.
+            </p>
+          </div>
+        )}
+
+        <div className="mt-16 flex justify-between max-w-md mx-auto">
+          <button 
+            onClick={handleBack} 
+            className={`btn btn-outline text-lg px-8 py-4 font-heading ${(isLoadingCustomVoice || isProcessingVoiceClone || isSaving) ? 'opacity-50 cursor-not-allowed' : ''}`}
+            disabled={isLoadingCustomVoice || isProcessingVoiceClone || isSaving}
+          >
+            Back
+          </button>
+          <button
+            onClick={handleNext}
+            className={`text-lg px-8 py-4 font-heading transition-all duration-300 rounded-xl border ${
+              state.voicePreference && state.voicePreference !== 'custom' && !isLoadingCustomVoice && !isProcessingVoiceClone && !isSaving
+                ? 'btn btn-primary'
+                : 'bg-transparent text-gray-400 border-gray-600 cursor-not-allowed hover:bg-transparent'
+            }`}
+            disabled={!state.voicePreference || state.voicePreference === 'custom' || isLoadingCustomVoice || isProcessingVoiceClone || isSaving}
+          >
+            {isProcessingVoiceClone ? 'Creating Voice Clone...' : 'Continue'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ChooseVoice;
         dispatch({ type: 'NEXT_STEP' });
         navigate('/onboarding/twilio-setup');
       }).catch((error) => {
