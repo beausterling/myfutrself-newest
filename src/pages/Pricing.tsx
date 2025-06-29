@@ -35,7 +35,8 @@ const Pricing = () => {
     starter: {
       name: 'Starter',
       monthlyPrice: 7,
-      annualPrice: 70, // ~17% discount (2 months free)
+      annualPrice: 69.96, // Based on $5.83/mo fee, billed annually
+      annualMonthlyEquivalent: 5.83,
       icon: <Zap className="w-6 h-6" />,
       color: 'from-blue-500 to-blue-600',
       popular: true,
@@ -52,7 +53,8 @@ const Pricing = () => {
     premium: {
       name: 'Premium',
       monthlyPrice: 19,
-      annualPrice: 190, // ~17% discount (2 months free)
+      annualPrice: 189.96, // Based on $15.83/mo fee, billed annually
+      annualMonthlyEquivalent: 15.83,
       icon: <Crown className="w-6 h-6" />,
       color: 'from-purple-500 to-purple-600',
       features: [
@@ -70,10 +72,23 @@ const Pricing = () => {
   const getPrice = (plan: typeof plans[keyof typeof plans]) => {
     if (plan.monthlyPrice === 0) return '$0';
     
-    const price = billingCycle === 'monthly' ? plan.monthlyPrice : plan.annualPrice;
-    const displayPrice = billingCycle === 'monthly' ? price : Math.round(price / 12);
+    if (billingCycle === 'monthly') {
+      return `$${plan.monthlyPrice}`;
+    } else {
+      // For annual, show the monthly equivalent
+      return `$${plan.annualMonthlyEquivalent}`;
+    }
+  };
+
+  const getDiscountPercentage = (plan: typeof plans[keyof typeof plans]) => {
+    if (plan.monthlyPrice === 0) return 0;
     
-    return `$${displayPrice}`;
+    const monthlyCost = plan.monthlyPrice * 12;
+    const annualCost = plan.annualPrice;
+    const savings = monthlyCost - annualCost;
+    const percentage = Math.round((savings / monthlyCost) * 100);
+    
+    return percentage;
   };
 
   const getSavings = (plan: typeof plans[keyof typeof plans]) => {
@@ -156,7 +171,7 @@ const Pricing = () => {
             >
               Annual
               <span className="absolute -top-2 -right-2 bg-purple-500 text-white text-xs px-2 py-0.5 rounded-full">
-                Save 17%
+                Save {getDiscountPercentage(plans.starter)}%
               </span>
             </button>
           </div>
@@ -254,7 +269,7 @@ const Pricing = () => {
               )}
               {billingCycle === 'annual' && plans[selectedPlan as keyof typeof plans].monthlyPrice > 0 && (
                 <div className="text-white/60 text-sm mb-4">
-                  Billed annually (${plans[selectedPlan as keyof typeof plans].annualPrice}/year)
+                  Billed annually as ${plans[selectedPlan as keyof typeof plans].annualPrice}/year
                 </div>
               )}
               <p className="text-white/70 font-body">
@@ -329,7 +344,7 @@ const Pricing = () => {
                   What's the difference between monthly and annual billing?
                 </h3>
                 <p className="text-white/80 font-body">
-                  Annual billing gives you a 17% discount (equivalent to 2 months free). You can switch between billing cycles at any time.
+                 Annual billing gives you a {getDiscountPercentage(plans.starter)}% discount. You can switch between billing cycles at any time.
                 </p>
               </div>
             </div>
