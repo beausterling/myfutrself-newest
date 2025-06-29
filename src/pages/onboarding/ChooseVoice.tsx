@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser, useAuth, useClerk } from '@clerk/clerk-react';
-import { AlertCircle, Mic, Play, Pause, X, CreditCard, Loader2, Upload, Square, RotateCcw, Check, Radical as MicVocal } from 'lucide-react';
+import { AlertCircle, Mic, Play, Pause, X, CreditCard, Loader2, Upload, Square, RotateCcw, Check } from 'lucide-react';
 import { useOnboarding } from '../../contexts/OnboardingContext';
 import { useElevenLabsVoices } from '../../hooks/useElevenLabsVoices';
 import { useVoiceStorage } from '../../hooks/useVoiceStorage';
@@ -1031,10 +1031,7 @@ const ChooseVoice = () => {
       {/* Main content */}
       <div className="onboarding-content container mx-auto px-4 max-w-2xl">
         <div className="text-center mb-12">
-          <h1 className="text-3xl md:text-4xl font-bold mb-6 font-heading flex items-center justify-center gap-3">
-            <MicVocal className="w-8 h-8 md:w-10 md:h-10 text-primary-aqua" />
-            Choose Your Future Self's Voice
-          </h1>
+          <h1 className="text-3xl md:text-4xl font-bold mb-6 font-heading">Choose Your Future Self's Voice</h1>
           <p className="text-text-secondary text-lg leading-relaxed font-body">
             Select the voice that will guide and motivate you on your journey.
           </p>
