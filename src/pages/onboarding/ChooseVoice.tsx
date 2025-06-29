@@ -24,6 +24,35 @@ const ChooseVoice = () => {
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [recordingInterval, setRecordingInterval] = useState<NodeJS.Timeout | null>(null);
 
+  // Disable background scrolling when modal is open
+  useEffect(() => {
+    if (showVoiceModal) {
+      // Disable scrolling on the body
+      document.body.style.overflow = 'hidden';
+      // Also disable scrolling on the main container
+      const mainContainer = document.querySelector('.onboarding-container');
+      if (mainContainer) {
+        (mainContainer as HTMLElement).style.overflow = 'hidden';
+      }
+    } else {
+      // Re-enable scrolling
+      document.body.style.overflow = '';
+      const mainContainer = document.querySelector('.onboarding-container');
+      if (mainContainer) {
+        (mainContainer as HTMLElement).style.overflow = '';
+      }
+    }
+
+    // Cleanup function to ensure scrolling is re-enabled when component unmounts
+    return () => {
+      document.body.style.overflow = '';
+      const mainContainer = document.querySelector('.onboarding-container');
+      if (mainContainer) {
+        (mainContainer as HTMLElement).style.overflow = '';
+      }
+    };
+  }, [showVoiceModal]);
+
   const {
     voices,
     isLoading,
