@@ -185,7 +185,7 @@ const Pricing = () => {
                 <div className="text-lg sm:text-2xl font-bold font-heading">
                   {getPrice(plan)}
                   <span className="text-xs sm:text-sm text-white/60">
-                    {plan.monthlyPrice === 0 ? '' : billingCycle === 'monthly' ? '/month' : '/month'}
+                    {plan.monthlyPrice === 0 ? '' : '/mo'}
                   </span>
                 </div>
                 {getSavings(plan) && (
