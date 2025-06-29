@@ -75,7 +75,7 @@ export const useVoiceStorage = () => {
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('voice_recordings')
         .upload(filePath, audioBlob, {
-          contentType: 'audio/wav',
+          contentType: audioBlob.type || 'audio/webm',
           upsert: false // Don't overwrite existing files
         });
 

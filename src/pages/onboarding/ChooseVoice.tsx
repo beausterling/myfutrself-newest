@@ -273,17 +273,36 @@ const ChooseVoice = () => {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
       
-      const recorder = new MediaRecorder(stream);
+      // Use audio/webm for better browser compatibility and smaller file sizes
+      const options = { mimeType: 'audio/webm' };
+      
+      // Fallback to default if webm is not supported
+      if (!MediaRecorder.isTypeSupported('audio/webm')) {
+        console.log('⚠️ audio/webm not supported, using default format');
+        options.mimeType = '';
+      }
+      
+      const recorder = new MediaRecorder(stream, options.mimeType ? options : undefined);
       const chunks: BlobPart[] = [];
 
       recorder.ondataavailable = (event) => {
-        console.log('📊 Recording data available:', event.data.size, 'bytes');
+        console.log('📊 Recording data available:', event.data.size, 'bytes', 'type:', event.data.type);
         chunks.push(event.data);
       };
 
       recorder.onstop = () => {
         console.log('⏹️ Recording stopped, creating blob from', chunks.length, 'chunks');
-        const blob = new Blob(chunks, { type: 'audio/wav' });
+        
+        // Use the same MIME type as the recorder
+        const mimeType = recorder.mimeType || 'audio/webm';
+        const blob = new Blob(chunks, { type: mimeType });
+        
+        console.log('📊 Final blob created:', {
+          size: blob.size,
+          type: blob.type,
+          chunksCount: chunks.length
+        });
+        
         setAudioBlob(blob);
         
         // Stop stream tracks and clear reference

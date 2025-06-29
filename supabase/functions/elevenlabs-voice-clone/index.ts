@@ -286,15 +286,9 @@ function extractFilename(filePath: string, requestId: string): string {
       throw new Error('Could not extract filename from path');
     }
     
-    // Ensure the filename has a .wav extension
-    if (!filename.toLowerCase().endsWith('.wav')) {
-      logWithContext('WARN', 'Filename does not have .wav extension, appending it', requestId, { 
-        originalFilename: filename 
-      });
-      return filename + '.wav';
-    }
+    // Keep the original filename as-is since it may be .webm or other formats
+    logWithContext('INFO', 'Using original filename', requestId, { filename });
     
-    logWithContext('INFO', 'Filename extracted successfully', requestId, { filename });
     return filename;
   } catch (error) {
     logWithContext('ERROR', 'Failed to extract filename', requestId, { 
