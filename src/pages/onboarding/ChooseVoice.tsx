@@ -7,6 +7,19 @@ import { useElevenLabsVoices } from '../../hooks/useElevenLabsVoices';
 import { useVoiceStorage } from '../../hooks/useVoiceStorage';
 import { createAuthenticatedSupabaseClient } from '../../lib/supabase';
 
+// Helper function to determine if a voice ID is a custom ElevenLabs voice
+const isElevenLabsCustomVoiceId = (voiceId: string | null): boolean => {
+  if (!voiceId) return false;
+  
+  // Exclude temporary states and default voices
+  const excludedValues = ['custom', 'custom_uploaded', 'friendly_mentor'];
+  if (excludedValues.includes(voiceId)) return false;
+  
+  // ElevenLabs voice IDs are typically 11-20 characters long and alphanumeric
+  // This is a reasonable heuristic to identify custom voice clones
+  return voiceId.length >= 11 && /^[a-zA-Z0-9]+$/.test(voiceId);
+};
+
 const ChooseVoice = () => {
   const navigate = useNavigate();
   const { user } = useUser();
@@ -32,6 +45,9 @@ const ChooseVoice = () => {
   const [isCloning, setIsCloning] = useState(false);
   const [hasExistingVoiceClone, setHasExistingVoiceClone] = useState(false);
   const { uploadVoiceRecording, isUploading: isUploadingVoice } = useVoiceStorage();
+
+  // Check if user has a final custom voice ID (ElevenLabs voice clone)
+  const hasFinalVoiceId = isElevenLabsCustomVoiceId(state.voicePreference);
 
   // Disable ALL background scrolling when modal is open
   useEffect(() => {
@@ -167,6 +183,13 @@ const ChooseVoice = () => {
   };
 
   const handleCustomVoiceClick = () => {
+    // Prevent creating a new voice if user already has a custom voice clone
+    if (hasFinalVoiceId) {
+      console.log('🚫 Custom voice creation blocked - user already has a voice clone');
+      setSaveError('You already have a custom voice clone. Only one custom voice is allowed per account.');
+      return;
+    }
+    
     console.log('🎯 Custom voice option clicked - showing voice modal');
     
     // Prevent action if user already has a voice clone
@@ -1101,19 +1124,30 @@ const ChooseVoice = () => {
               className={`flex items-center p-4 rounded-xl border-2 transition-all duration-300 cursor-pointer hover:scale-[1.02] relative overflow-hidden w-full ${
                 hasExistingVoiceClone
                   ? 'border-gray-500/30 bg-gray-500/5 opacity-50 cursor-not-allowed'
-                  : 
-                state.voicePreference === 'custom'
-                  ? 'border-purple-500 bg-purple-500/10 shadow-lg shadow-purple-500/20'
+              onClick={hasFinalVoiceId ? () => {} : handleCustomVoiceClick}
+              className={`flex items-center p-4 rounded-xl border-2 transition-all duration-300 relative overflow-hidden w-full ${
+                hasFinalVoiceId
+                  ? 'border-gray-500 bg-gray-500/10 shadow-lg shadow-gray-500/20 cursor-not-allowed opacity-50'
+                  : state.voicePreference === 'custom'
+                  ? 'border-purple-500 bg-purple-500/10 shadow-lg shadow-purple-500/20 cursor-pointer hover:scale-[1.02]'
                   : state.voicePreference === 'custom_uploaded'
-                  ? 'border-green-500 bg-green-500/10 shadow-lg shadow-green-500/20'
-                  : 'border-purple-500/30 bg-gradient-to-r from-purple-500/5 to-pink-500/5 hover:border-purple-500/50'
+                  ? 'border-green-500 bg-green-500/10 shadow-lg shadow-green-500/20 cursor-pointer hover:scale-[1.02]'
+                  : 'border-purple-500/30 bg-gradient-to-r from-purple-500/5 to-pink-500/5 hover:border-purple-500/50 cursor-pointer hover:scale-[1.02]'
               }`}
             >
               {/* Gradient overlay for special effect */}
-              <div className={`absolute inset-0 bg-gradient-to-r ${hasExistingVoiceClone ? 'from-gray-500/10 to-gray-500/10' : 'from-purple-500/10 to-pink-500/10'} opacity-50`} />
+              <div className={`absolute inset-0 opacity-50 ${
+                hasFinalVoiceId 
+                  ? 'bg-gradient-to-r from-gray-500/10 to-gray-600/10'
+                  : 'bg-gradient-to-r from-purple-500/10 to-pink-500/10'
+              }`} />
               
               {/* Custom Voice Avatar */}
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mr-4 flex-shrink-0 relative z-10">
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 flex-shrink-0 relative z-10 ${
+                hasFinalVoiceId
+                  ? 'bg-gradient-to-br from-gray-500 to-gray-600'
+                  : 'bg-gradient-to-br from-purple-500 to-pink-500'
+              }`}>
                 <Mic className="w-6 h-6 text-white" />
               </div>
 
@@ -1121,12 +1155,13 @@ const ChooseVoice = () => {
               <div className="flex-grow min-w-0 relative z-10">
                 <div className="flex items-center justify-between mb-1">
                   <h3 className="text-lg font-semibold text-white font-heading">
-                    {state.voicePreference === 'custom_uploaded' ? 'Your Custom Voice' : 'Create Your Own'}
+                    {hasFinalVoiceId ? 'Your Custom Voice (Created)' : 
+                     state.voicePreference === 'custom_uploaded' ? 'Your Custom Voice' : 'Create Your Own'}
                     {hasExistingVoiceClone && ' (Already Created)'}
                   </h3>
-                  {state.voicePreference === 'custom_uploaded' && (
+                  {(hasFinalVoiceId || state.voicePreference === 'custom_uploaded') && (
                     <span className="px-2 py-1 bg-green-500/20 text-green-300 text-xs rounded-full font-medium flex-shrink-0">
-                      ✓ Uploaded
+                      ✓ {hasFinalVoiceId ? 'Created' : 'Uploaded'}
                     </span>
                   )}
                   {hasExistingVoiceClone && (
@@ -1136,7 +1171,9 @@ const ChooseVoice = () => {
                   )}
                 </div>
                 <p className="text-white/70 text-sm font-body">
-                  {hasExistingVoiceClone
+                  {hasFinalVoiceId
+                    ? 'Your personalized voice clone is already set up.'
+                    : state.voicePreference === 'custom_uploaded' 
                     ? 'You have already created a custom voice clone'
                     : state.voicePreference === 'custom_uploaded' 
                     ? 'Your personalized voice clone is ready'
@@ -1145,6 +1182,24 @@ const ChooseVoice = () => {
                 </p>
               </div>
             </div>
+            
+            {/* Information message when voice clone already exists */}
+            {hasFinalVoiceId && (
+              <div className="mt-4 p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="text-white text-xs font-bold">ℹ️</span>
+                  </div>
+                  <div className="text-left">
+                    <h4 className="text-blue-400 font-semibold text-sm mb-2 font-heading">Custom Voice Already Created</h4>
+                    <p className="text-blue-300 text-sm font-body">
+                      You already have a personalized voice clone set up for your account. 
+                      Only one custom voice is allowed per account to ensure the best quality and consistency.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
             
             {/* Information message for users who already have a voice clone */}
             {hasExistingVoiceClone && (
@@ -1255,11 +1310,11 @@ const ChooseVoice = () => {
           <button
             onClick={handleNext}
             className={`text-lg px-8 py-4 font-heading transition-all duration-300 rounded-xl border ${
-              state.voicePreference && state.voicePreference !== 'custom' && !isSaving && !isCloning
+              state.voicePreference && state.voicePreference !== 'custom' && state.voicePreference !== 'custom_uploaded'
                 ? 'btn btn-primary'
                 : 'bg-transparent text-gray-400 border-gray-600 cursor-not-allowed hover:bg-transparent'
             }`}
-            disabled={!state.voicePreference || state.voicePreference === 'custom' || isSaving || isCloning}
+            disabled={!state.voicePreference || state.voicePreference === 'custom' || state.voicePreference === 'custom_uploaded'}
           >
             {isSaving || isCloning ? (
               <>
