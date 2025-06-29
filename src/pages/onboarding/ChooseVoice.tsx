@@ -11,67 +11,121 @@ const ChooseVoice = () => {
   const { user } = useUser();
   const { getToken } = useAuth();
   const { signOut } = useClerk();
-  const { state, updateState } = useOnboarding();
+  const { state, dispatch } = useOnboarding();
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [hasLoadedFromDB, setHasLoadedFromDB] = useState(false);
+  const [showPaywallModal, setShowPaywallModal] = useState(false);
   const [showVoiceModal, setShowVoiceModal] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
-  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [recordingInterval, setRecordingInterval] = useState<NodeJS.Timeout | null>(null);
 
-  const { voices, loading, error, playingVoiceId, playVoice, stopVoice } = useElevenLabsVoices();
+  const {
+    voices,
+    isLoading,
+    error: voicesError,
+    isPlaying,
+    isBuffering,
+    audioProgress,
+    playVoice,
+    stopVoice,
+    refetchVoices
+  } = useElevenLabsVoices();
 
+  // Handle scroll effect for blur
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 50);
+      const scrollTop = window.scrollY;
+      setIsScrolled(scrollTop > 50);
     };
 
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const handleBack = () => {
-    navigate('/onboarding/current-self');
-  };
-
-  const handleNext = async () => {
-    if (!state.voicePreference || state.voicePreference === 'custom') return;
-
-    try {
-      const token = await getToken({ template: 'supabase' });
-      if (!token) {
-        console.error('No auth token available');
+  // Load existing voice preference from database
+  useEffect(() => {
+    const loadVoicePreference = async () => {
+      if (!user?.id || hasLoadedFromDB) {
         return;
       }
 
-      const supabase = createAuthenticatedSupabaseClient(token);
-      
-      const { error } = await supabase
-        .from('user_profiles')
-        .update({ 
-          voice_preference: state.voicePreference,
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', user?.id);
+      try {
+        console.log('🔄 Loading voice preference for user:', user.id);
+        
+        const token = await getToken({ template: 'supabase' });
+        if (!token) {
+          console.error('❌ No Clerk token available');
+          return;
+        }
 
-      if (error) {
-        console.error('Error updating voice preference:', error);
-        return;
+        const supabase = createAuthenticatedSupabaseClient(token);
+        
+        const { data: userProfile, error } = await supabase
+          .from('user_profiles')
+          .select('voice_preference')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (error && error.code !== 'PGRST116') {
+          console.error('❌ Error loading voice preference:', error);
+          setSaveError(`Failed to load existing voice preference: ${error.message}`);
+          return;
+        }
+
+        if (userProfile?.voice_preference) {
+          console.log('✅ Loaded existing voice preference:', userProfile.voice_preference);
+          dispatch({ type: 'SET_VOICE', payload: userProfile.voice_preference });
+        }
+        
+        setHasLoadedFromDB(true);
+      } catch (error) {
+        console.error('❌ Error loading voice preference:', error);
+        setSaveError('Failed to load voice preference. Please refresh and try again.');
+        setHasLoadedFromDB(true);
       }
+    };
 
-      navigate('/onboarding/call-prefs');
-    } catch (error) {
-      console.error('Error in handleNext:', error);
-    }
-  };
+    loadVoicePreference();
+  }, [user?.id, getToken, hasLoadedFromDB, dispatch]);
 
   const handleVoiceSelect = (voiceId: string) => {
-    updateState({ voicePreference: voiceId });
+    console.log('🎯 Voice selected:', voiceId);
+    dispatch({ type: 'SET_VOICE', payload: voiceId });
+  };
+
+  const handleCustomVoiceClick = () => {
+    console.log('🎯 Custom voice option clicked - showing voice modal');
+    setShowVoiceModal(true);
+  };
+
+  const handlePaywallClose = () => {
+    setShowPaywallModal(false);
+  };
+
+  const handleSubscribe = () => {
+    // TODO: Implement subscription logic
+    console.log('🔄 Redirecting to subscription page...');
+    // For now, just close the modal
+    setShowPaywallModal(false);
+    // In the future, this would redirect to a subscription page or open a payment modal
+  };
+
+  const handleVoiceModalClose = () => {
+    setShowVoiceModal(false);
+    setIsRecording(false);
+    setRecordingTime(0);
+    setAudioBlob(null);
+    if (mediaRecorder) {
+      mediaRecorder.stop();
+    }
+    if (recordingInterval) {
+      clearInterval(recordingInterval);
+    }
   };
 
   const startRecording = async () => {
@@ -96,11 +150,21 @@ const ChooseVoice = () => {
       setRecordingTime(0);
 
       const interval = setInterval(() => {
-        setRecordingTime(prev => prev + 1);
+        setRecordingTime(prev => {
+          if (prev >= 30) {
+            recorder.stop();
+            setIsRecording(false);
+            clearInterval(interval);
+            return 30;
+          }
+          return prev + 1;
+        });
       }, 1000);
       setRecordingInterval(interval);
+
     } catch (error) {
       console.error('Error starting recording:', error);
+      setSaveError('Failed to access microphone. Please check permissions.');
     }
   };
 
@@ -110,196 +174,314 @@ const ChooseVoice = () => {
       setIsRecording(false);
       if (recordingInterval) {
         clearInterval(recordingInterval);
-        setRecordingInterval(null);
       }
     }
   };
 
-  const playRecording = () => {
-    if (audioBlob) {
-      const audio = new Audio(URL.createObjectURL(audioBlob));
-      audio.play();
-      setIsPlaying(true);
-      setCurrentAudio(audio);
-
-      audio.onended = () => {
-        setIsPlaying(false);
-        setCurrentAudio(null);
-      };
-    }
-  };
-
-  const stopPlayback = () => {
-    if (currentAudio) {
-      currentAudio.pause();
-      currentAudio.currentTime = 0;
-      setIsPlaying(false);
-      setCurrentAudio(null);
-    }
-  };
-
-  const resetRecording = () => {
-    setAudioBlob(null);
-    setUploadedFile(null);
-    setRecordingTime(0);
-    if (currentAudio) {
-      currentAudio.pause();
-      setCurrentAudio(null);
-    }
-    setIsPlaying(false);
-  };
-
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file && file.type.startsWith('audio/')) {
-      setUploadedFile(file);
-      setAudioBlob(null);
+    if (file) {
+      if (file.type.startsWith('audio/')) {
+        setAudioBlob(file);
+      } else {
+        setSaveError('Please select an audio file.');
+      }
     }
   };
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
+  const handleVoiceSubmit = async () => {
+    if (!audioBlob) {
+      setSaveError('Please record or upload an audio file first.');
+      return;
+    }
 
-  const handleCreateCustomVoice = async () => {
-    if (!audioBlob && !uploadedFile) return;
-
-    setIsUploading(true);
     try {
-      // Here you would implement the actual voice creation logic
-      // For now, we'll just simulate the process
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      console.log('🎤 Submitting custom voice recording');
+      // Here you would typically upload the audio to your voice cloning service
+      // For now, we'll just close the modal and show a success message
       
-      // Set a custom voice ID and close modal
-      updateState({ voicePreference: 'custom_voice_created' });
+      // Set a custom voice ID to indicate user has uploaded their voice
+      dispatch({ type: 'SET_VOICE', payload: 'custom_uploaded' });
+      
       setShowVoiceModal(false);
+      setAudioBlob(null);
+      setRecordingTime(0);
       
+      console.log('✅ Custom voice uploaded successfully');
     } catch (error) {
-      console.error('Error creating custom voice:', error);
-    } finally {
-      setIsUploading(false);
+      console.error('❌ Error uploading custom voice:', error);
+      setSaveError('Failed to upload voice. Please try again.');
     }
   };
+
+  const handleVoicePreview = (voiceId: string, voiceName: string) => {
+    if (isPlaying === voiceId) {
+      stopVoice();
+    } else {
+      // Find the voice to get its preview URL
+      const voice = voices.find(v => v.voice_id === voiceId);
+      playVoice(voiceId, voice?.preview_url);
+    }
+  };
+
+  const saveVoicePreference = async () => {
+    if (!user?.id) {
+      throw new Error('User authentication failed. Please try signing in again.');
+    }
+
+    try {
+      setIsSaving(true);
+      setSaveError(null);
+      console.log('💾 Saving voice preference to database...');
+      console.log('📊 Voice preference to save:', state.voicePreference);
+      
+      const token = await getToken({ template: 'supabase' });
+      if (!token) {
+        throw new Error('No authentication token available');
+      }
+
+      const supabase = createAuthenticatedSupabaseClient(token);
+      
+      // Check if user profile exists, create if it doesn't
+      const { data: existingProfile, error: checkError } = await supabase
+        .from('user_profiles')
+        .select('user_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error('❌ Error checking user profile:', checkError);
+        throw new Error(`Failed to check user profile: ${checkError.message}`);
+      }
+
+      if (!existingProfile) {
+        // User profile should have been created during Clerk authentication
+        // If it doesn't exist, there's an issue with the initial setup
+        console.error('❌ User profile not found during update - this should not happen');
+        console.error('📊 User ID:', user.id);
+        setSaveError('Your profile was not found. Please sign in again to complete setup.');
+        
+        // Sign out the user to force re-authentication
+        setTimeout(() => {
+          console.log('🔄 Signing out user due to missing profile');
+          signOut();
+        }, 3000); // Give user time to read the error message
+        
+        throw new Error('User profile not found - signed out for re-authentication');
+      } else {
+        // Update existing user profile
+        console.log('📝 Updating existing user profile...');
+        const { data: updateData, error: updateError } = await supabase
+          .from('user_profiles')
+          .update({
+            voice_preference: state.voicePreference,
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', user.id)
+          .select();
+
+        if (updateError) {
+          console.error('❌ Error updating user profile:', updateError);
+          throw new Error(`Failed to update user profile: ${updateError.message}`);
+        }
+
+        // Check if any rows were actually updated
+        if (!updateData || updateData.length === 0) {
+          console.error('❌ No user profile was updated - profile may have been deleted');
+          console.error('📊 User ID:', user.id);
+          setSaveError('Your profile could not be updated. Please sign in again to complete setup.');
+          
+          // Sign out the user to force re-authentication
+          setTimeout(() => {
+            console.log('🔄 Signing out user due to failed profile update');
+            signOut();
+          }, 3000); // Give user time to read the error message
+          
+          throw new Error('User profile update failed - signed out for re-authentication');
+        }
+
+        console.log('✅ User profile updated successfully');
+      }
+      
+      console.log('✅ Voice preference saved successfully');
+    } catch (error) {
+      console.error('❌ Error saving voice preference:', error);
+      setSaveError(error instanceof Error ? error.message : 'Failed to save voice preference');
+      throw error;
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleNext = () => {
+    if (!state.voicePreference) {
+      setSaveError('Please select a voice to continue.');
+      return;
+    }
+
+    dispatch({ type: 'NEXT_STEP' });
+    navigate('/onboarding/twilio-setup');
+  };
+
+  const handleBack = () => {
+    dispatch({ type: 'PREV_STEP' });
+    navigate('/onboarding/call-prefs');
+  };
+
+  // Generate a color for each voice based on its name
+  const getVoiceColor = (voiceName: string) => {
+    const colors = [
+      'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+      'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+      'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+      'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+      'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+      'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)',
+      'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
+    ];
+    
+    // Simple hash function to get consistent color for each voice
+    let hash = 0;
+    for (let i = 0; i < voiceName.length; i++) {
+      const char = voiceName.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    
+    return colors[Math.abs(hash) % colors.length];
+  };
+
+  // Extract first name from voice name
+  const getFirstName = (fullName: string) => {
+    return fullName.split(' ')[0];
+  };
+
+  // Show loading state
+  if (isLoading) {
+    return null; // Let the main loading screen handle this
+  }
 
   return (
     <div className={`onboarding-container ${isScrolled ? 'scrolled' : ''}`}>
       {/* Voice Recording/Upload Modal */}
       {showVoiceModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-gray-900 rounded-2xl p-6 max-w-md w-full mx-4 border border-gray-700">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-heading text-white">Create Your Voice</h3>
-              <button
-                onClick={() => setShowVoiceModal(false)}
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <div className="space-y-6">
-              {/* Recording Section */}
-              <div className="text-center">
-                <p className="text-gray-300 mb-4 font-body">
-                  Record at least 30 seconds of clear speech
-                </p>
-                
-                {!audioBlob && !uploadedFile && (
-                  <div className="space-y-4">
-                    <button
-                      onClick={isRecording ? stopRecording : startRecording}
-                      className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 ${
-                        isRecording 
-                          ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
-                          : 'bg-blue-500 hover:bg-blue-600'
-                      }`}
-                    >
-                      {isRecording ? (
-                        <Square className="w-8 h-8 text-white" />
-                      ) : (
+          <div className="bg-bg-primary border border-white/20 rounded-2xl p-6 max-w-md w-full relative">
+            <button
+              onClick={handleVoiceModalClose}
+              className="absolute top-4 right-4 text-white/60 hover:text-white transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            
+            <div className="text-center">
+              <h3 className="text-2xl font-bold mb-3 font-heading">Create Your Custom Voice</h3>
+              <p className="text-white/70 mb-6 text-sm font-body">
+                Record or upload 30 seconds of your voice
+              </p>
+              
+              <div className="space-y-4">
+                {/* Simple Recording Button */}
+                <div className="text-center">
+                  {!audioBlob ? (
+                    !isRecording ? (
+                      <button
+                        onClick={startRecording}
+                        className="w-20 h-20 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center mx-auto transition-all duration-300 hover:scale-105"
+                      >
                         <Mic className="w-8 h-8 text-white" />
-                      )}
-                    </button>
-                    
-                    {isRecording && (
-                      <p className="text-white font-mono text-lg">
-                        {formatTime(recordingTime)}
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {(audioBlob || uploadedFile) && (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-center space-x-4">
-                      <button
-                        onClick={isPlaying ? stopPlayback : playRecording}
-                        className="w-12 h-12 rounded-full bg-blue-500 hover:bg-blue-600 flex items-center justify-center transition-colors"
-                      >
-                        {isPlaying ? (
-                          <Pause className="w-6 h-6 text-white" />
-                        ) : (
-                          <Play className="w-6 h-6 text-white ml-1" />
-                        )}
                       </button>
-                      
+                    ) : (
+                      <div className="text-center space-y-4">
+                        <button
+                          onClick={stopRecording}
+                          className="w-20 h-20 bg-red-500 rounded-full flex items-center justify-center mx-auto animate-pulse"
+                        >
+                          <Square className="w-8 h-8 text-white" />
+                        </button>
+                        <p className="text-white/70 text-base mt-2">{recordingTime}s / 30s</p>
+                        
+                        {/* Recording Script */}
+                        <div className="bg-white/5 border border-white/10 rounded-lg p-4 text-left max-h-48 overflow-y-auto">
+                          <p className="text-white/90 text-sm leading-relaxed font-body">
+                            <span className="text-blue-300 font-medium">[Calm]</span><br />
+                            Hey, it is your future self. I'm talking to you from a few years ahead.
+                            <br /><br />
+                            <span className="text-green-300 font-medium">[Optimistic]</span><br />
+                            Life turned out okay. It's better than you feared.
+                            <br /><br />
+                            <span className="text-yellow-300 font-medium">[Upbeat]</span><br />
+                            You finished that project you were working on and it finally paid off!
+                            <br /><br />
+                            <span className="text-purple-300 font-medium">[Soft]</span><br />
+                            Hard days still happen. But when they do, just take a slow breath and drink some water. It helps.
+                            <br /><br />
+                            <span className="text-orange-300 font-medium">[Encouraging]</span><br />
+                            Show up every day, even when the goal feels far away. Small decisions add up quickly.
+                            <br /><br />
+                            <span className="text-cyan-300 font-medium">[Confident]</span><br />
+                            I am proof that it works. Keep going. We'll talk again soon.
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  ) : (
+                    <div className="text-center">
+                      <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-2">
+                        <Mic className="w-8 h-8 text-white" />
+                      </div>
+                      <p className="text-green-400 text-base">✓ Recording completed ({recordingTime}s)</p>
                       <button
-                        onClick={resetRecording}
-                        className="w-12 h-12 rounded-full bg-gray-600 hover:bg-gray-700 flex items-center justify-center transition-colors"
+                        onClick={() => {
+                          setAudioBlob(null);
+                          setRecordingTime(0);
+                        }}
+                        className="text-white/60 text-xs underline mt-1 hover:text-white"
                       >
-                        <RotateCcw className="w-5 h-5 text-white" />
+                        Record again
                       </button>
                     </div>
-                    
-                    <p className="text-green-400 font-body">
-                      {uploadedFile ? `File: ${uploadedFile.name}` : 'Recording ready'}
-                    </p>
-                  </div>
-                )}
+                  )}
+                </div>
+                
+                {/* Compact Upload Section */}
+                <div className="text-center">
+                  <p className="text-white/60 text-sm mb-3">or</p>
+                  <label className="block">
+                    <input
+                      type="file"
+                      accept="audio/*"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                    <div className="border border-dashed border-white/30 rounded-lg p-3 text-center hover:border-white/50 transition-colors cursor-pointer">
+                      <Upload className="w-5 h-5 text-white/60 mx-auto mb-1" />
+                      <p className="text-white/70 text-base">Upload audio file</p>
+                      <p className="text-white/50 text-sm">MP3, WAV, M4A (30s max)</p>
+                    </div>
+                  </label>
+                </div>
               </div>
-
-              {/* Upload Section */}
-              <div className="border-t border-gray-700 pt-6">
-                <p className="text-gray-300 mb-4 text-center font-body">
-                  Or upload an audio file
-                </p>
-                <label className="block">
-                  <input
-                    type="file"
-                    accept="audio/*"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                  />
-                  <div className="border-2 border-dashed border-gray-600 rounded-lg p-6 text-center hover:border-gray-500 transition-colors cursor-pointer">
-                    <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                    <p className="text-gray-400 font-body">Click to upload audio file</p>
-                  </div>
-                </label>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex space-x-3">
+              
+              {/* Compact Bottom Buttons */}
+              <div className="flex gap-2 mt-6">
                 <button
-                  onClick={() => setShowVoiceModal(false)}
-                  className="flex-1 py-3 px-4 bg-gray-700 hover:bg-gray-600 text-white rounded-xl transition-colors font-heading"
+                  onClick={handleVoiceModalClose}
+                  className="flex-1 px-4 py-2 text-base border border-white/20 rounded-lg text-white/80 hover:text-white hover:border-white/40 transition-colors font-heading"
                 >
                   Cancel
                 </button>
                 <button
-                  onClick={handleCreateCustomVoice}
-                  disabled={(!audioBlob && !uploadedFile) || isUploading}
-                  className="flex-1 py-3 px-4 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-xl transition-colors font-heading flex items-center justify-center"
+                  onClick={handleVoiceSubmit}
+                  disabled={!audioBlob}
+                  className={`flex-1 px-4 py-2 text-base rounded-lg font-heading transition-colors ${
+                    audioBlob 
+                      ? 'bg-primary-aqua hover:bg-primary-aqua/80 text-white' 
+                      : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                  }`}
                 >
-                  {isUploading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Creating...
-                    </>
-                  ) : (
-                    'Create Voice'
-                  )}
+                  Submit
                 </button>
               </div>
             </div>
@@ -310,112 +492,166 @@ const ChooseVoice = () => {
       {/* Main content */}
       <div className="onboarding-content container mx-auto px-4 max-w-2xl">
         <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-6 font-heading">
-            Choose Your Voice
-          </h1>
-          <p className="text-xl text-white/80 font-body leading-relaxed">
-            Select the voice that will guide and motivate you on your journey
+          <h1 className="text-3xl md:text-4xl font-bold mb-6 font-heading">Choose Your Future Self's Voice</h1>
+          <p className="text-text-secondary text-lg leading-relaxed font-body">
+            Select the voice that will guide and motivate you on your journey.
           </p>
         </div>
 
-        {loading && (
-          <div className="text-center py-12">
-            <Loader2 className="w-8 h-8 text-white/60 mx-auto mb-4 animate-spin" />
-            <p className="text-white/60 font-body">Loading voices...</p>
+        {/* Error Display */}
+        {(voicesError || saveError) && (
+          <div className="mb-8 p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-red-400 font-medium font-heading">Error</p>
+                <p className="text-red-300 text-sm mt-1 font-body">
+                  {voicesError || saveError}
+                </p>
+                {voicesError && (
+                  <button
+                    onClick={refetchVoices}
+                    className="text-red-300 text-sm underline mt-2 hover:text-red-200 font-body"
+                  >
+                    Try Again
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    setSaveError(null);
+                  }}
+                  className="text-red-300 text-sm underline mt-2 ml-4 hover:text-red-200 font-body"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
-        {error && (
-          <div className="text-center py-12">
-            <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
-            <p className="text-red-400 font-body">
-              Error loading voices: {error}
-            </p>
+        {/* Saving Indicator */}
+        {isSaving && (
+          <div className="mb-8 p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+            <div className="flex items-center gap-3">
+              <div className="w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+              <p className="text-blue-400 font-medium font-heading">Saving your voice preference...</p>
+            </div>
           </div>
         )}
 
         {/* Voices List - Mobile Optimized */}
         {voices.length > 0 ? (
           <div className="space-y-3 max-w-2xl mx-auto">
-            {/* Create Your Own Voice Option */}
-            <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 border border-purple-500/30 rounded-2xl p-6 hover:border-purple-400/50 transition-all duration-300">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center space-x-3 mb-2">
-                    <div className="w-3 h-3 bg-gradient-to-r from-purple-400 to-blue-400 rounded-full"></div>
-                    <h3 className="text-lg font-semibold text-white font-heading">
-                      Create Your Own Voice
-                    </h3>
-                    <span className="bg-gradient-to-r from-purple-500 to-blue-500 text-white text-xs px-2 py-1 rounded-full font-body">
-                      Premium
+            {/* Create Your Own Voice Option - Now at the top */}
+            <div
+              onClick={handleCustomVoiceClick}
+              className={`flex items-center p-4 rounded-xl border-2 transition-all duration-300 cursor-pointer hover:scale-[1.02] relative overflow-hidden w-full ${
+                state.voicePreference === 'custom'
+                  ? 'border-purple-500 bg-purple-500/10 shadow-lg shadow-purple-500/20'
+                  : state.voicePreference === 'custom_uploaded'
+                  ? 'border-green-500 bg-green-500/10 shadow-lg shadow-green-500/20'
+                  : 'border-purple-500/30 bg-gradient-to-r from-purple-500/5 to-pink-500/5 hover:border-purple-500/50'
+              }`}
+            >
+              {/* Gradient overlay for special effect */}
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-pink-500/10 opacity-50" />
+              
+              {/* Custom Voice Avatar */}
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mr-4 flex-shrink-0 relative z-10">
+                <Mic className="w-6 h-6 text-white" />
+              </div>
+
+              {/* Custom Voice Info */}
+              <div className="flex-grow min-w-0 relative z-10">
+                <div className="flex items-center justify-between mb-1">
+                  <h3 className="text-lg font-semibold text-white font-heading">
+                    {state.voicePreference === 'custom_uploaded' ? 'Your Custom Voice' : 'Create Your Own'}
+                  </h3>
+                  {state.voicePreference === 'custom_uploaded' && (
+                    <span className="px-2 py-1 bg-green-500/20 text-green-300 text-xs rounded-full font-medium flex-shrink-0">
+                      ✓ Uploaded
                     </span>
-                  </div>
-                  <p className="text-white/70 text-sm font-body">
-                    Upload your own voice recording for a personalized experience
-                  </p>
+                  )}
                 </div>
-                <button
-                  onClick={() => setShowVoiceModal(true)}
-                  className="ml-4 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white px-6 py-2 rounded-xl transition-all duration-300 font-heading flex items-center space-x-2"
-                >
-                  <CreditCard className="w-4 h-4" />
-                  <span>Create</span>
-                </button>
+                <p className="text-white/70 text-sm font-body">
+                  {state.voicePreference === 'custom_uploaded' 
+                    ? 'Your personalized voice clone is ready'
+                    : 'Record or upload your voice for a personalized experience'
+                  }
+                </p>
               </div>
             </div>
 
-            {/* Regular Voices */}
-            {voices.map((voice) => (
-              <div
-                key={voice.voice_id}
-                className={`voice-option border rounded-2xl p-6 transition-all duration-300 cursor-pointer ${
-                  state.voicePreference === voice.voice_id
-                    ? 'border-blue-400 bg-blue-500/10'
-                    : 'border-gray-600 bg-gray-800/50 hover:border-gray-500 hover:bg-gray-700/50'
-                }`}
-                onClick={() => handleVoiceSelect(voice.voice_id)}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <div className={`w-3 h-3 rounded-full ${
-                        state.voicePreference === voice.voice_id ? 'bg-blue-400' : 'bg-gray-500'
-                      }`}></div>
-                      <h3 className="text-lg font-semibold text-white font-heading">
-                        {voice.name}
+            {/* Regular Voices from ElevenLabs - Compact Mobile Layout */}
+            {voices.map((voice) => {
+              const firstName = getFirstName(voice.name);
+              const isCurrentlyPlaying = isPlaying === voice.voice_id;
+              const isCurrentlyBuffering = isBuffering === voice.voice_id;
+              const progress = audioProgress[voice.voice_id] || 0;
+
+              return (
+                <div
+                  key={voice.voice_id}
+                  onClick={() => handleVoiceSelect(voice.voice_id)}
+                  className={`flex items-center p-4 rounded-xl border-2 transition-all duration-300 cursor-pointer hover:scale-[1.02] ${
+                    state.voicePreference === voice.voice_id
+                      ? 'border-primary-aqua bg-primary-aqua/10 shadow-lg shadow-primary-aqua/20'
+                      : 'border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10'
+                  }`}
+                >
+                  {/* Voice Avatar */}
+                  <div 
+                    className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg mr-4 flex-shrink-0"
+                    style={{ background: getVoiceColor(voice.name) }}
+                  >
+                    {firstName.charAt(0).toUpperCase()}
+                  </div>
+
+                  {/* Voice Info */}
+                  <div className="flex-grow min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <h3 className="text-lg font-semibold text-white font-heading truncate pr-2">
+                        {firstName}
                       </h3>
-                      {voice.labels?.gender && (
-                        <span className="text-xs text-white/60 bg-gray-700 px-2 py-1 rounded-full font-body">
-                          {voice.labels.gender}
-                        </span>
-                      )}
                     </div>
-                    {voice.labels?.description && (
-                      <p className="text-white/70 text-sm font-body">
-                        {voice.labels.description}
-                      </p>
+                    
+                    {/* Progress Bar - Only show when playing */}
+                    {(isCurrentlyPlaying || isCurrentlyBuffering) && (
+                      <div className="w-full bg-white/20 rounded-full h-1 mb-2">
+                        <div 
+                          className="bg-primary-aqua h-1 rounded-full transition-all duration-300"
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
                     )}
                   </div>
+
+                  {/* Play Button */}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (playingVoiceId === voice.voice_id) {
-                        stopVoice();
-                      } else {
-                        playVoice(voice.voice_id);
-                      }
+                      handleVoicePreview(voice.voice_id, voice.name);
                     }}
-                    className="ml-4 w-12 h-12 bg-blue-500 hover:bg-blue-600 text-white rounded-full flex items-center justify-center transition-colors"
+                    disabled={isBuffering && isBuffering !== voice.voice_id}
+                    className={`ml-3 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 flex-shrink-0 ${
+                      isCurrentlyBuffering
+                        ? 'bg-yellow-500 text-white'
+                        : isCurrentlyPlaying
+                        ? 'bg-red-500 hover:bg-red-600 text-white'
+                        : 'bg-primary-aqua hover:bg-primary-aqua/80 text-white'
+                    } ${isBuffering && isBuffering !== voice.voice_id ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110'}`}
                   >
-                    {playingVoiceId === voice.voice_id ? (
-                      <Pause className="w-5 h-5" />
+                    {isCurrentlyBuffering ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : isCurrentlyPlaying ? (
+                      <Pause className="w-4 h-4" />
                     ) : (
-                      <Play className="w-5 h-5 ml-1" />
+                      <Play className="w-4 h-4 ml-0.5" />
                     )}
                   </button>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="text-center py-12">

@@ -13,12 +13,14 @@ tsconfig.node.json
 vite.config.ts
 src/pages/Dashboard.tsx
 src/pages/Landing.tsx
+postcss.config.js
 src/components/FutureSelfRevealModal.tsx
 src/components/onboarding/CategoryTab.tsx
 src/components/onboarding/GoalCategorySection.tsx
 src/contexts/OnboardingContext.tsx
 src/hooks/useCamera.ts
 src/hooks/usePhotoStorage.ts
+src/index.css
 src/layouts/MainLayout.tsx
 src/pages/Onboarding.tsx
 src/pages/onboarding/CurrentSelf.tsx
@@ -29,6 +31,7 @@ src/pages/onboarding/UserObstacles.tsx
 src/pages/onboarding/UserCommitments.tsx
 src/pages/onboarding/Consent.tsx
 src/vite-env.d.ts
+tailwind.config.js
 supabase/functions/ageify-user/config.json
 supabase/functions/ageify-user/index.ts
 supabase/functions/upload-current-photo/config.json
