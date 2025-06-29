@@ -50,6 +50,10 @@ const TwilioSetup = () => {
     }
   };
 
+  const handleCreateNewNumber = () => {
+    console.log('🔄 Navigating to pricing page for phone number setup');
+    navigate('/pricing');
+  };
   const handleBack = () => {
     dispatch({ type: 'PREV_STEP' });
     navigate('/onboarding/choose-voice');
