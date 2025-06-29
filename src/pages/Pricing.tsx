@@ -169,14 +169,14 @@ const Pricing = () => {
             >
               {plan.popular && (
                 <div className="absolute -top-2 left-1/2 transform -translate-x-1/2">
-                  <span className="bg-gradient-to-r from-primary-aqua to-primary-blue text-white px-2 py-1 rounded-full text-xs font-medium font-heading">
+                  <span className="bg-gradient-to-r from-primary-aqua to-primary-blue text-white px-2 py-1 rounded-full text-xs font-medium font-heading mb-2">
                     Popular
                   </span>
                 </div>
               )}
               
               <div className="text-center">
-                <div className={`inline-flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-r ${plan.color} text-white mb-3`}>
+                <div className={`inline-flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-r ${plan.color} text-white mb-3 ${plan.popular ? 'mt-4' : ''}`}>
                   {plan.icon}
                 </div>
                 <h3 className="text-sm sm:text-lg font-bold mb-2 font-heading">
@@ -225,7 +225,7 @@ const Pricing = () => {
               }`}
             >
               Annual
-              <span className="absolute -top-2 -right-2 bg-purple-500 text-white text-xs px-2 py-0.5 rounded-full">
+              <span className="absolute -top-3 -right-2 bg-purple-500 text-white text-xs px-2 py-0.5 rounded-full">
                 2 months FREE
               </span>
             </button>
