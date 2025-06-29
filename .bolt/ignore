@@ -36,3 +36,4 @@ supabase/functions/ageify-user/config.json
 supabase/functions/ageify-user/index.ts
 supabase/functions/upload-current-photo/config.json
 supabase/functions/upload-current-photo/index.ts
+supabase/migrations/*
