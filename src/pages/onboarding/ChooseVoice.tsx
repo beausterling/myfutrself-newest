@@ -367,7 +367,7 @@ const ChooseVoice = () => {
       {/* Voice Recording/Upload Modal */}
       {showVoiceModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-bg-primary border border-white/20 rounded-2xl p-6 max-w-lg w-full relative max-h-[90vh]">
+          <div className="bg-bg-primary border border-white/20 rounded-2xl p-6 max-w-md w-full relative">
             <button
               onClick={handleVoiceModalClose}
               className="absolute top-4 right-4 text-white/60 hover:text-white transition-colors"
@@ -375,140 +375,115 @@ const ChooseVoice = () => {
               <X className="w-6 h-6" />
             </button>
             
-            <div className="text-center pt-2">
-              {/* Start Recording Button */}
-              {!isRecording && !audioBlob && (
-                <div className="space-y-6">
-                  <button
-                    onClick={startRecording}
-                    className="btn btn-primary text-lg px-8 py-4 font-heading"
-                  >
-                    <Mic className="w-5 h-5 mr-3" />
-                    Start Recording
-                  </button>
-                  
-                  {/* Script Text */}
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-6 text-left">
-                    <div className="space-y-4 text-white/90 font-body leading-relaxed">
-                      <p>
-                        <span className="text-blue-300 font-medium">[Calm]</span><br />
-                        Hey, it is your future self. I'm talking to you from a few years ahead.
-                      </p>
-                      
-                      <p>
-                        <span className="text-green-300 font-medium">[Optimistic]</span><br />
-                        Life turned out okay. It's better than you feared.
-                      </p>
-                      
-                      <p>
-                        <span className="text-yellow-300 font-medium">[Upbeat]</span><br />
-                        You finished that project you were working on and it finally paid off!
-                      </p>
-                      
-                      <p>
-                        <span className="text-purple-300 font-medium">[Soft]</span><br />
-                        Hard days still happen. But when they do, just take a slow breath and drink some water. It helps.
-                      </p>
-                      
-                      <p>
-                        <span className="text-orange-300 font-medium">[Encouraging]</span><br />
-                        Show up every day, even when the goal feels far away. Small decisions add up quickly.
-                      </p>
-                      
-                      <p>
-                        <span className="text-cyan-300 font-medium">[Confident]</span><br />
-                        I am proof that it works. Keep going. We'll talk again soon.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
+            <div className="text-center">
+              <h3 className="text-2xl font-bold mb-3 font-heading">Create Your Custom Voice</h3>
+              <p className="text-white/70 mb-6 text-sm font-body">
+                Record or upload 30 seconds of your voice
+              </p>
               
-              {/* Recording State */}
-              {isRecording && (
-                <div className="space-y-6">
-                  <div className="text-center">
-                    <button
-                      onClick={stopRecording}
-                      className="w-20 h-20 bg-red-500 rounded-full flex items-center justify-center mx-auto animate-pulse mb-4"
-                    >
-                      <Square className="w-8 h-8 text-white" />
-                    </button>
-                    <p className="text-white/70 text-lg font-mono">{recordingTime}s / 30s</p>
-                  </div>
-                  
-                  {/* Script Text During Recording */}
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-6 text-left">
-                    <div className="space-y-4 text-white/90 font-body leading-relaxed">
-                      <p>
-                        <span className="text-blue-300 font-medium">[Calm]</span><br />
-                        Hey, it is your future self. I'm talking to you from a few years ahead.
-                      </p>
-                      
-                      <p>
-                        <span className="text-green-300 font-medium">[Optimistic]</span><br />
-                        Life turned out okay. It's better than you feared.
-                      </p>
-                      
-                      <p>
-                        <span className="text-yellow-300 font-medium">[Upbeat]</span><br />
-                        You finished that project you were working on and it finally paid off!
-                      </p>
-                      
-                      <p>
-                        <span className="text-purple-300 font-medium">[Soft]</span><br />
-                        Hard days still happen. But when they do, just take a slow breath and drink some water. It helps.
-                      </p>
-                      
-                      <p>
-                        <span className="text-orange-300 font-medium">[Encouraging]</span><br />
-                        Show up every day, even when the goal feels far away. Small decisions add up quickly.
-                      </p>
-                      
-                      <p>
-                        <span className="text-cyan-300 font-medium">[Confident]</span><br />
-                        I am proof that it works. Keep going. We'll talk again soon.
-                      </p>
+              <div className="space-y-4">
+                {/* Simple Recording Button */}
+                <div className="text-center">
+                  {!audioBlob ? (
+                    !isRecording ? (
+                      <button
+                        onClick={startRecording}
+                        className="w-20 h-20 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center mx-auto transition-all duration-300 hover:scale-105"
+                      >
+                        <Mic className="w-8 h-8 text-white" />
+                      </button>
+                    ) : (
+                      <div className="text-center space-y-4">
+                        <button
+                          onClick={stopRecording}
+                          className="w-20 h-20 bg-red-500 rounded-full flex items-center justify-center mx-auto animate-pulse"
+                        >
+                          <Square className="w-8 h-8 text-white" />
+                        </button>
+                        <p className="text-white/70 text-base mt-2">{recordingTime}s / 30s</p>
+                        
+                        {/* Recording Script */}
+                        <div className="bg-white/5 border border-white/10 rounded-lg p-4 text-left max-h-48 overflow-y-auto">
+                          <p className="text-white/90 text-sm leading-relaxed font-body">
+                            <span className="text-blue-300 font-medium">[Calm]</span><br />
+                            Hey, it is your future self. I'm talking to you from a few years ahead.
+                            <br /><br />
+                            <span className="text-green-300 font-medium">[Optimistic]</span><br />
+                            Life turned out okay. It's better than you feared.
+                            <br /><br />
+                            <span className="text-yellow-300 font-medium">[Upbeat]</span><br />
+                            You finished that project you were working on and it finally paid off!
+                            <br /><br />
+                            <span className="text-purple-300 font-medium">[Soft]</span><br />
+                            Hard days still happen. But when they do, just take a slow breath and drink some water. It helps.
+                            <br /><br />
+                            <span className="text-orange-300 font-medium">[Encouraging]</span><br />
+                            Show up every day, even when the goal feels far away. Small decisions add up quickly.
+                            <br /><br />
+                            <span className="text-cyan-300 font-medium">[Confident]</span><br />
+                            I am proof that it works. Keep going. We'll talk again soon.
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  ) : (
+                    <div className="text-center">
+                      <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-2">
+                        <Mic className="w-8 h-8 text-white" />
+                      </div>
+                      <p className="text-green-400 text-base">✓ Recording completed ({recordingTime}s)</p>
+                      <button
+                        onClick={() => {
+                          setAudioBlob(null);
+                          setRecordingTime(0);
+                        }}
+                        className="text-white/60 text-xs underline mt-1 hover:text-white"
+                      >
+                        Record again
+                      </button>
                     </div>
-                  </div>
+                  )}
                 </div>
-              )}
+                
+                {/* Compact Upload Section */}
+                <div className="text-center">
+                  <p className="text-white/60 text-sm mb-3">or</p>
+                  <label className="block">
+                    <input
+                      type="file"
+                      accept="audio/*"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                    <div className="border border-dashed border-white/30 rounded-lg p-3 text-center hover:border-white/50 transition-colors cursor-pointer">
+                      <Upload className="w-5 h-5 text-white/60 mx-auto mb-1" />
+                      <p className="text-white/70 text-base">Upload audio file</p>
+                      <p className="text-white/50 text-sm">MP3, WAV, M4A (30s max)</p>
+                    </div>
+                  </label>
+                </div>
+              </div>
               
-              {/* Recording Complete State */}
-              {audioBlob && !isRecording && (
-                <div className="space-y-6">
-                  <div className="text-center">
-                    <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Mic className="w-8 h-8 text-white" />
-                    </div>
-                    <p className="text-green-400 text-lg font-medium">✓ Recording completed ({recordingTime}s)</p>
-                    <button
-                      onClick={() => {
-                        setAudioBlob(null);
-                        setRecordingTime(0);
-                      }}
-                      className="text-white/60 text-sm underline mt-2 hover:text-white"
-                    >
-                      Record again
-                    </button>
-                  </div>
-                  
-                  <div className="flex gap-3">
-                    <button
-                      onClick={handleVoiceModalClose}
-                      className="flex-1 btn btn-outline font-heading"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleVoiceSubmit}
-                      className="flex-1 btn btn-primary font-heading"
-                    >
-                      Create Voice Clone
-                    </button>
-                  </div>
-                </div>
-              )}
+              {/* Compact Bottom Buttons */}
+              <div className="flex gap-2 mt-6">
+                <button
+                  onClick={handleVoiceModalClose}
+                  className="flex-1 px-4 py-2 text-base border border-white/20 rounded-lg text-white/80 hover:text-white hover:border-white/40 transition-colors font-heading"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleVoiceSubmit}
+                  disabled={!audioBlob}
+                  className={`flex-1 px-4 py-2 text-base rounded-lg font-heading transition-colors ${
+                    audioBlob 
+                      ? 'bg-primary-aqua hover:bg-primary-aqua/80 text-white' 
+                      : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  Submit
+                </button>
+              </div>
             </div>
           </div>
         </div>
