@@ -215,12 +215,14 @@ async function cloneVoiceWithElevenLabs(
   voiceName: string,
   voiceDescription: string,
   elevenLabsApiKey: string,
+  originalFilename: string,
   requestId: string
 ): Promise<ElevenLabsVoiceResponse> {
   logWithContext('INFO', 'Starting voice cloning with ElevenLabs', requestId, { 
     voiceName, 
     voiceDescription,
-    audioSize: audioBlob.size 
+    audioSize: audioBlob.size,
+    originalFilename
   });
 
   try {
@@ -228,7 +230,7 @@ async function cloneVoiceWithElevenLabs(
     const formData = new FormData();
     formData.append('name', voiceName);
     formData.append('description', voiceDescription);
-    formData.append('files', audioBlob, 'voice-sample.wav');
+    formData.append('files', audioBlob, originalFilename);
 
     // Optional: Add labels for better organization
     formData.append('labels', JSON.stringify({
@@ -269,6 +271,37 @@ async function cloneVoiceWithElevenLabs(
       error: error instanceof Error ? error.message : String(error) 
     });
     throw error;
+  }
+}
+
+// Extract filename from file path
+function extractFilename(filePath: string, requestId: string): string {
+  logWithContext('INFO', 'Extracting filename from path', requestId, { filePath });
+  
+  try {
+    // Handle both forward slashes and backslashes
+    const filename = filePath.split(/[/\\]/).pop();
+    
+    if (!filename) {
+      throw new Error('Could not extract filename from path');
+    }
+    
+    // Ensure the filename has a .wav extension
+    if (!filename.toLowerCase().endsWith('.wav')) {
+      logWithContext('WARN', 'Filename does not have .wav extension, appending it', requestId, { 
+        originalFilename: filename 
+      });
+      return filename + '.wav';
+    }
+    
+    logWithContext('INFO', 'Filename extracted successfully', requestId, { filename });
+    return filename;
+  } catch (error) {
+    logWithContext('ERROR', 'Failed to extract filename', requestId, { 
+      error: error instanceof Error ? error.message : String(error),
+      filePath 
+    });
+    throw new Error(`Failed to extract filename from path: ${filePath}`);
   }
 }
 
@@ -363,6 +396,9 @@ serve(async (req) => {
     // Download the audio file from Supabase Storage
     const audioBlob = await downloadAudioFile(supabase, requestBody.custom_voice_audio_path, requestId);
 
+    // Extract the original filename from the file path
+    const originalFilename = extractFilename(requestBody.custom_voice_audio_path, requestId);
+
     // Clone the voice using ElevenLabs
     const voiceName = requestBody.voice_name || `${userId}_custom_voice`;
     const voiceDescription = requestBody.voice_description || 'Custom voice clone created by MyFutrSelf';
@@ -372,6 +408,7 @@ serve(async (req) => {
       voiceName,
       voiceDescription,
       elevenLabsApiKey,
+      originalFilename,
       requestId
     );
 
