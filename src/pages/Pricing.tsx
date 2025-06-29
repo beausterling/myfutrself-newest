@@ -140,7 +140,7 @@ const Pricing = () => {
               onClick={() => setBillingCycle('monthly')}
               className={`px-6 py-2 rounded-lg font-medium transition-all duration-300 ${
                 billingCycle === 'monthly'
-                  ? 'bg-primary-aqua text-white shadow-lg'
+                  ? 'bg-blue-600 text-white shadow-lg'
                   : 'text-white/70 hover:text-white'
               }`}
             >
@@ -150,12 +150,12 @@ const Pricing = () => {
               onClick={() => setBillingCycle('annual')}
               className={`px-6 py-2 rounded-lg font-medium transition-all duration-300 relative ${
                 billingCycle === 'annual'
-                  ? 'bg-primary-aqua text-white shadow-lg'
+                  ? 'bg-blue-600 text-white shadow-lg'
                   : 'text-white/70 hover:text-white'
               }`}
             >
               Annual
-              <span className="absolute -top-2 -right-2 bg-green-500 text-white text-xs px-2 py-0.5 rounded-full">
+              <span className="absolute -top-2 -right-2 bg-purple-500 text-white text-xs px-2 py-0.5 rounded-full">
                 Save 17%
               </span>
             </button>
