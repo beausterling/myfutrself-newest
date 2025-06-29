@@ -33,6 +33,9 @@ const ChooseVoice = () => {
   const [hasExistingVoiceClone, setHasExistingVoiceClone] = useState(false);
   const { uploadVoiceRecording, isUploading: isUploadingVoice } = useVoiceStorage();
 
+  // Check if user already has a voice preference set (not NULL)
+  const hasVoicePreference = state.voicePreference !== null && state.voicePreference !== undefined && state.voicePreference !== '';
+
   // Disable ALL background scrolling when modal is open
   useEffect(() => {
     if (showVoiceModal) {
@@ -168,6 +171,13 @@ const ChooseVoice = () => {
 
   const handleCustomVoiceClick = () => {
     console.log('🎯 Custom voice option clicked - showing voice modal');
+    
+    // Prevent action if user already has a voice preference
+    if (hasVoicePreference) {
+      console.log('❌ Custom voice creation blocked - user already has a voice preference:', state.voicePreference);
+      setSaveError('You already have a voice preference set. Only one custom voice is allowed per account.');
+      return;
+    }
     
     // Prevent action if user already has a voice clone
     if (hasExistingVoiceClone) {
@@ -1100,20 +1110,28 @@ const ChooseVoice = () => {
               onClick={handleCustomVoiceClick}
               className={`flex items-center p-4 rounded-xl border-2 transition-all duration-300 cursor-pointer hover:scale-[1.02] relative overflow-hidden w-full ${
                 hasExistingVoiceClone
-                  ? 'border-gray-500/30 bg-gray-500/5 opacity-50 cursor-not-allowed'
-                  : 
-                state.voicePreference === 'custom'
-                  ? 'border-purple-500 bg-purple-500/10 shadow-lg shadow-purple-500/20'
+              onClick={hasVoicePreference ? () => {} : handleCustomVoiceClick}
+              className={`flex items-center p-4 rounded-xl border-2 transition-all duration-300 relative overflow-hidden w-full ${
+                hasVoicePreference
+                  ? 'border-gray-500/30 bg-gray-500/5 cursor-not-allowed opacity-60'
+                  : state.voicePreference === 'custom'
+                  ? 'border-purple-500 bg-purple-500/10 shadow-lg shadow-purple-500/20 cursor-pointer hover:scale-[1.02]'
                   : state.voicePreference === 'custom_uploaded'
-                  ? 'border-green-500 bg-green-500/10 shadow-lg shadow-green-500/20'
-                  : 'border-purple-500/30 bg-gradient-to-r from-purple-500/5 to-pink-500/5 hover:border-purple-500/50'
+                  ? 'border-green-500 bg-green-500/10 shadow-lg shadow-green-500/20 cursor-pointer hover:scale-[1.02]'
+                  : 'border-purple-500/30 bg-gradient-to-r from-purple-500/5 to-pink-500/5 hover:border-purple-500/50 cursor-pointer hover:scale-[1.02]'
               }`}
             >
               {/* Gradient overlay for special effect */}
-              <div className={`absolute inset-0 bg-gradient-to-r ${hasExistingVoiceClone ? 'from-gray-500/10 to-gray-500/10' : 'from-purple-500/10 to-pink-500/10'} opacity-50`} />
+              {!hasVoicePreference && (
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-pink-500/10 opacity-50" />
+              )}
               
               {/* Custom Voice Avatar */}
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mr-4 flex-shrink-0 relative z-10">
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 flex-shrink-0 relative z-10 ${
+                hasVoicePreference 
+                  ? 'bg-gray-500' 
+                  : 'bg-gradient-to-br from-purple-500 to-pink-500'
+              }`}>
                 <Mic className="w-6 h-6 text-white" />
               </div>
 
@@ -1121,12 +1139,12 @@ const ChooseVoice = () => {
               <div className="flex-grow min-w-0 relative z-10">
                 <div className="flex items-center justify-between mb-1">
                   <h3 className="text-lg font-semibold text-white font-heading">
-                    {state.voicePreference === 'custom_uploaded' ? 'Your Custom Voice' : 'Create Your Own'}
+                    {hasVoicePreference ? 'Voice Already Set' : 'Create Your Own'}
                     {hasExistingVoiceClone && ' (Already Created)'}
                   </h3>
-                  {state.voicePreference === 'custom_uploaded' && (
-                    <span className="px-2 py-1 bg-green-500/20 text-green-300 text-xs rounded-full font-medium flex-shrink-0">
-                      ✓ Uploaded
+                  {hasVoicePreference && (
+                    <span className="px-2 py-1 bg-gray-500/20 text-gray-300 text-xs rounded-full font-medium flex-shrink-0">
+                      ✓ Set
                     </span>
                   )}
                   {hasExistingVoiceClone && (
@@ -1138,13 +1156,27 @@ const ChooseVoice = () => {
                 <p className="text-white/70 text-sm font-body">
                   {hasExistingVoiceClone
                     ? 'You have already created a custom voice clone'
-                    : state.voicePreference === 'custom_uploaded' 
-                    ? 'Your personalized voice clone is ready'
+                  {hasVoicePreference 
+                    ? 'You already have a voice preference configured'
                     : 'Record or upload your voice for a personalized experience'
                   }
                 </p>
               </div>
             </div>
+
+            {/* Informational message when voice preference is already set */}
+            {hasVoicePreference && (
+              <div className="mt-4 p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-white text-xs font-bold">ℹ</span>
+                  </div>
+                  <p className="text-blue-400 font-medium font-heading text-sm">
+                    You can only create one custom voice per account. Your voice preference is already configured.
+                  </p>
+                </div>
+              </div>
+            )}
             
             {/* Information message for users who already have a voice clone */}
             {hasExistingVoiceClone && (
