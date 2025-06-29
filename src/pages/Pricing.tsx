@@ -107,7 +107,7 @@ const Pricing = () => {
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-primary-aqua/10 to-primary-blue/10" />
         
-        <div className="relative container mx-auto px-4 pt-20 pb-16">
+        <div className="relative container mx-auto px-4 pt-20 pb-24">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -140,7 +140,7 @@ const Pricing = () => {
 
 
       {/* Compact Pricing Cards */}
-      <div className="container mx-auto px-4 pb-16">
+      <div className="container mx-auto px-4 pt-8 pb-16">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
