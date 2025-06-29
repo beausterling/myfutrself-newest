@@ -25,6 +25,8 @@ const ChooseVoice = () => {
   const [recordingInterval, setRecordingInterval] = useState<NodeJS.Timeout | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [microphonePermissionGranted, setMicrophonePermissionGranted] = useState(false);
+  const [isPlayingRecording, setIsPlayingRecording] = useState(false);
+  const [playbackAudio, setPlaybackAudio] = useState<HTMLAudioElement | null>(null);
 
   // Disable ALL background scrolling when modal is open
   useEffect(() => {
@@ -347,6 +349,75 @@ const ChooseVoice = () => {
     }
   };
 
+  const playRecording = () => {
+    if (!audioBlob) return;
+    
+    try {
+      console.log('🔊 Playing back recorded audio');
+      
+      // Stop any existing playback
+      if (playbackAudio) {
+        playbackAudio.pause();
+        playbackAudio.currentTime = 0;
+        setPlaybackAudio(null);
+      }
+      
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+      
+      audio.onplay = () => {
+        console.log('▶️ Playback started');
+        setIsPlayingRecording(true);
+      };
+      
+      audio.onended = () => {
+        console.log('⏹️ Playback ended');
+        setIsPlayingRecording(false);
+        URL.revokeObjectURL(audioUrl);
+        setPlaybackAudio(null);
+      };
+      
+      audio.onerror = (error) => {
+        console.error('❌ Playback error:', error);
+        setIsPlayingRecording(false);
+        URL.revokeObjectURL(audioUrl);
+        setPlaybackAudio(null);
+        setSaveError('Failed to play recording. Please try recording again.');
+      };
+      
+      setPlaybackAudio(audio);
+      audio.play();
+      
+    } catch (error) {
+      console.error('❌ Error playing recording:', error);
+      setSaveError('Failed to play recording. Please try recording again.');
+    }
+  };
+
+  const stopPlayback = () => {
+    if (playbackAudio) {
+      console.log('⏹️ Stopping playback');
+      playbackAudio.pause();
+      playbackAudio.currentTime = 0;
+      setIsPlayingRecording(false);
+      setPlaybackAudio(null);
+    }
+  };
+
+  const startNewRecording = () => {
+    console.log('🔄 Starting new recording');
+    
+    // Stop any playback
+    stopPlayback();
+    
+    // Clear existing recording
+    setAudioBlob(null);
+    setRecordingTime(0);
+    
+    // Start recording after a brief delay
+    setTimeout(() => startRecording(), 300);
+  };
+
   // Cleanup on component unmount
   useEffect(() => {
     return () => {
@@ -365,6 +436,12 @@ const ChooseVoice = () => {
       // Stop media stream
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
+      }
+      
+      // Stop any playback
+      if (playbackAudio) {
+        playbackAudio.pause();
+        setPlaybackAudio(null);
       }
     };
   }, []);
@@ -615,20 +692,47 @@ const ChooseVoice = () => {
                 {audioBlob && (
                   <div className="text-center">
                     <div className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Mic className="w-10 h-10 text-white" />
+                      {isPlayingRecording ? (
+                        <Pause className="w-10 h-10 text-white" />
+                      ) : (
+                        <Play className="w-10 h-10 text-white" />
+                      )}
                     </div>
                     <p className="text-green-400 text-lg font-bold">✓ Recording Complete!</p>
                     <p className="text-white/70 text-sm">Duration: {recordingTime} seconds</p>
-                    <button
-                      onClick={() => {
-                        setAudioBlob(null);
-                        setRecordingTime(0);
-                        setTimeout(() => startRecording(), 300);
-                      }}
-                      className="mt-2 text-white/60 text-sm underline hover:text-white"
-                    >
-                      Record again
-                    </button>
+                    
+                    {/* Playback Controls */}
+                    <div className="flex justify-center gap-3 mt-4">
+                      <button
+                        onClick={isPlayingRecording ? stopPlayback : playRecording}
+                        className="px-4 py-2 bg-primary-aqua hover:bg-primary-aqua/80 text-white rounded-lg transition-colors flex items-center gap-2"
+                      >
+                        {isPlayingRecording ? (
+                          <>
+                            <Pause className="w-4 h-4" />
+                            Stop
+                          </>
+                        ) : (
+                          <>
+                            <Play className="w-4 h-4" />
+                            Play
+                          </>
+                        )}
+                      </button>
+                      
+                      <button
+                        onClick={startNewRecording}
+                        disabled={isPlayingRecording}
+                        className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${
+                          isPlayingRecording 
+                            ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                            : 'bg-white/10 hover:bg-white/20 text-white border border-white/20'
+                        }`}
+                      >
+                        <RotateCcw className="w-4 h-4" />
+                        Record Again
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
