@@ -694,7 +694,7 @@ const ChooseVoice = () => {
                     <div className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
                       <Check className="w-10 h-10 text-white" />
                     </div>
-                    <p className="text-green-400 text-lg font-bold">✓ Recording Complete!</p>
+                    <p className="text-green-400 text-lg font-bold">Recording Complete!</p>
                     <p className="text-white/70 text-sm">Duration: {recordingTime} seconds</p>
                     
                     {/* Playback Controls */}
