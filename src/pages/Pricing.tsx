@@ -110,7 +110,7 @@ const Pricing = () => {
         </motion.div>
 
         {/* Feature Comparison Grid */}
-        <div className="grid md:grid-cols-3 gap-8 mb-16">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-8 mb-16">
           {Object.entries(features).map(([plan, planFeatures], index) => (
             <motion.div
               key={plan}
@@ -119,35 +119,34 @@ const Pricing = () => {
               transition={{ duration: 0.8, delay: 0.3 + index * 0.1 }}
               className={`relative rounded-2xl border border-white/10 bg-white/5 backdrop-blur-lg p-8 ${
                 plan === 'starter' ? 'ring-2 ring-primary-aqua shadow-lg shadow-primary-aqua/20' : ''
-              }`}
+              } sm:p-8 p-4`}
             >
               {plan === 'starter' && (
-                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                  <span className="bg-gradient-to-r from-primary-aqua to-primary-blue text-white px-4 py-1 rounded-full text-sm font-medium font-heading">
+                <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                  <span className="bg-gradient-to-r from-primary-aqua to-primary-blue text-white px-3 py-1 rounded-full text-xs sm:text-sm font-medium font-heading">
                     Most Popular
                   </span>
                 </div>
               )}
               
-              <div className="text-center mb-8">
-                <div className={`inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-r ${planColors[plan as keyof typeof planColors]} text-white mb-4`}>
+              <div className="text-center mb-6 sm:mb-8">
+                <div className={`inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-r ${planColors[plan as keyof typeof planColors]} text-white mb-3 sm:mb-4`}>
                   {planIcons[plan as keyof typeof planIcons]}
                 </div>
-                <h3 className="text-2xl font-bold capitalize mb-2 font-heading">
+                <h3 className="text-lg sm:text-2xl font-bold capitalize mb-2 font-heading">
                   {plan}
                 </h3>
-                <div className="text-3xl font-bold font-heading">
+                <div className="text-xl sm:text-3xl font-bold font-heading">
                   {plan === 'free' ? '$0' : plan === 'starter' ? '$12' : '$29'}
-                  {plan !== 'free' && <span className="text-lg text-white/60">/month</span>}
-                  {plan === 'free' && <span className="text-lg text-white/60">/month</span>}
+                  <span className="text-sm sm:text-lg text-white/60">/month</span>
                 </div>
               </div>
 
-              <ul className="space-y-4">
+              <ul className="space-y-2 sm:space-y-4">
                 {planFeatures.map((feature, featureIndex) => (
                   <li key={featureIndex} className="flex items-start gap-3">
-                    <Check className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
-                    <span className="text-white/90 font-body">{feature}</span>
+                    <Check className="w-4 h-4 sm:w-5 sm:h-5 text-green-400 mt-0.5 flex-shrink-0" />
+                    <span className="text-white/90 font-body text-sm sm:text-base">{feature}</span>
                   </li>
                 ))}
               </ul>
@@ -162,7 +161,7 @@ const Pricing = () => {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.6 }}
-          className="max-w-6xl mx-auto"
+          className="max-w-6xl mx-auto hidden sm:block"
         >
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold mb-4 font-heading">
@@ -180,6 +179,26 @@ const Pricing = () => {
         </motion.div>
       </div>
 
+      {/* Mobile CTA Section */}
+      <div className="container mx-auto px-4 py-8 sm:hidden">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.6 }}
+          className="text-center"
+        >
+          <h2 className="text-2xl font-bold mb-4 font-heading">
+            Ready to Transform?
+          </h2>
+          <p className="text-text-secondary mb-6 font-body">
+            Choose your plan and start your journey today
+          </p>
+          <button className="btn btn-primary text-lg px-8 py-4 font-heading w-full">
+            Get Started Free
+          </button>
+        </motion.div>
+      </div>
+
       {/* FAQ Section */}
       <div className="container mx-auto px-4 py-16">
         <motion.div
@@ -194,7 +213,7 @@ const Pricing = () => {
             </h2>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
             <div className="space-y-6">
               <div className="bg-white/5 backdrop-blur-lg rounded-xl border border-white/10 p-6">
                 <h3 className="text-lg font-semibold mb-3 font-heading">
@@ -244,7 +263,7 @@ const Pricing = () => {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 1.0 }}
-          className="text-center bg-gradient-to-r from-primary-aqua/10 to-primary-blue/10 rounded-2xl border border-white/10 p-12"
+          className="text-center bg-gradient-to-r from-primary-aqua/10 to-primary-blue/10 rounded-2xl border border-white/10 p-8 sm:p-12"
         >
           <h2 className="text-3xl md:text-4xl font-bold mb-4 font-heading">
             Start Your Transformation Today
