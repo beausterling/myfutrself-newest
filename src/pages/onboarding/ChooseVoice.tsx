@@ -376,16 +376,12 @@ const ChooseVoice = () => {
             </button>
             
             <div className="text-center">
-              <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-3">
-                <Mic className="w-6 h-6 text-white" />
-              </div>
-              
-              <h3 className="text-xl font-bold mb-2 font-heading">Create Your Custom Voice</h3>
-              <p className="text-white/70 mb-4 text-sm font-body">
+              <h3 className="text-2xl font-bold mb-3 font-heading">Create Your Custom Voice</h3>
+              <p className="text-white/70 mb-6 text-base font-body">
                 Record or upload 30 seconds of your voice.
               </p>
               
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {/* Simple Recording Button */}
                 <div className="text-center">
                   {!audioBlob ? (
@@ -404,7 +400,7 @@ const ChooseVoice = () => {
                         >
                           <Square className="w-8 h-8 text-white" />
                         </button>
-                        <p className="text-white/70 text-sm mt-2">{recordingTime}s / 30s</p>
+                        <p className="text-white/70 text-base mt-2">{recordingTime}s / 30s</p>
                       </div>
                     )
                   ) : (
@@ -412,7 +408,7 @@ const ChooseVoice = () => {
                       <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-2">
                         <Mic className="w-8 h-8 text-white" />
                       </div>
-                      <p className="text-green-400 text-sm">✓ Recording completed ({recordingTime}s)</p>
+                      <p className="text-green-400 text-base">✓ Recording completed ({recordingTime}s)</p>
                       <button
                         onClick={() => {
                           setAudioBlob(null);
@@ -428,7 +424,7 @@ const ChooseVoice = () => {
                 
                 {/* Compact Upload Section */}
                 <div className="text-center">
-                  <p className="text-white/60 text-xs mb-2">or</p>
+                  <p className="text-white/60 text-sm mb-3">or</p>
                   <label className="block">
                     <input
                       type="file"
@@ -438,8 +434,8 @@ const ChooseVoice = () => {
                     />
                     <div className="border border-dashed border-white/30 rounded-lg p-3 text-center hover:border-white/50 transition-colors cursor-pointer">
                       <Upload className="w-5 h-5 text-white/60 mx-auto mb-1" />
-                      <p className="text-white/70 text-sm">Upload audio file</p>
-                      <p className="text-white/50 text-xs">MP3, WAV, M4A (30s max)</p>
+                      <p className="text-white/70 text-base">Upload audio file</p>
+                      <p className="text-white/50 text-sm">MP3, WAV, M4A (30s max)</p>
                     </div>
                   </label>
                 </div>
@@ -449,14 +445,14 @@ const ChooseVoice = () => {
               <div className="flex gap-2 mt-6">
                 <button
                   onClick={handleVoiceModalClose}
-                  className="flex-1 px-4 py-2 text-sm border border-white/20 rounded-lg text-white/80 hover:text-white hover:border-white/40 transition-colors font-heading"
+                  className="flex-1 px-4 py-2 text-base border border-white/20 rounded-lg text-white/80 hover:text-white hover:border-white/40 transition-colors font-heading"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleVoiceSubmit}
                   disabled={!audioBlob}
-                  className={`flex-1 px-4 py-2 text-sm rounded-lg font-heading transition-colors ${
+                  className={`flex-1 px-4 py-2 text-base rounded-lg font-heading transition-colors ${
                     audioBlob 
                       ? 'bg-primary-aqua hover:bg-primary-aqua/80 text-white' 
                       : 'bg-gray-600 text-gray-400 cursor-not-allowed'
