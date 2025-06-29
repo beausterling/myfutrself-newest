@@ -74,7 +74,7 @@ const Pricing = () => {
               <span className="gradient-text">Future</span>
             </h1>
             <p className="text-xl md:text-2xl text-text-secondary mb-8 font-body leading-relaxed">
-              Unlock your potential with personalized accountability from your future self. 
+              Unlock your potential with personal accountability from your future self. 
               Start free, upgrade when you're ready to accelerate your growth.
             </p>
             
