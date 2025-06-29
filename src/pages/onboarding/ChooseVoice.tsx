@@ -167,6 +167,13 @@ const ChooseVoice = () => {
   const handleCustomVoiceClick = () => {
     console.log('🎯 Custom voice option clicked - showing voice modal');
     
+    // Check if user already has a voice preference set
+    if (hasExistingVoicePreference) {
+      console.log('⚠️ User already has a voice preference set, custom voice creation disabled');
+      setSaveError('You already have a voice selected. To create a custom voice, please contact support.');
+      return;
+    }
+    
     // If there's existing voice recording, show the completion state
     if (existingVoiceRecording) {
       console.log('📁 Existing voice recording found, showing completion state');
@@ -178,12 +185,6 @@ const ChooseVoice = () => {
     } else {
       requestMicrophonePermission();
     }
-  };
-
-  const handleUpgradeClick = () => {
-    console.log('🔄 Redirecting to pricing page for voice upgrade');
-    // Open pricing page in new tab
-    window.open('/pricing', '_blank');
   };
 
   const requestMicrophonePermission = async () => {
@@ -1093,76 +1094,64 @@ const ChooseVoice = () => {
         {voices.length > 0 ? (
           <div className="space-y-3 max-w-2xl mx-auto">
             {/* Create Your Own Voice Option - Now at the top */}
-            {hasExistingVoicePreference ? (
-              // Upgrade to Starter Plan Option
-              <div
-                onClick={handleUpgradeClick}
-                className="flex items-center p-4 rounded-xl border-2 transition-all duration-300 cursor-pointer hover:scale-[1.02] relative overflow-hidden w-full border-blue-500/30 bg-gradient-to-r from-blue-500/5 to-cyan-500/5 hover:border-blue-500/50"
-              >
-                {/* Gradient overlay for special effect */}
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 opacity-50" />
-                
-                {/* Upgrade Icon */}
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center mr-4 flex-shrink-0 relative z-10">
-                  <CreditCard className="w-6 h-6 text-white" />
-                </div>
-
-                {/* Upgrade Info */}
-                <div className="flex-grow min-w-0 relative z-10">
-                  <div className="flex items-center justify-between mb-1">
-                    <h3 className="text-lg font-semibold text-white font-heading">
-                      Upgrade to Create Custom Voice
-                    </h3>
-                    <span className="px-2 py-1 bg-blue-500/20 text-blue-300 text-xs rounded-full font-medium flex-shrink-0">
-                      Starter Plan
-                    </span>
-                  </div>
-                  <p className="text-white/70 text-sm font-body">
-                    Unlock custom voice creation with our Starter plan - create unlimited personalized voices
-                  </p>
-                </div>
-              </div>
-            ) : (
-              // Original Create Your Own Voice Option
-              <div
-                onClick={handleCustomVoiceClick}
-                className={`flex items-center p-4 rounded-xl border-2 transition-all duration-300 cursor-pointer hover:scale-[1.02] relative overflow-hidden w-full ${
-                  state.voicePreference === 'custom'
-                    ? 'border-purple-500 bg-purple-500/10 shadow-lg shadow-purple-500/20'
-                    : state.voicePreference === 'custom_uploaded'
-                    ? 'border-green-500 bg-green-500/10 shadow-lg shadow-green-500/20'
-                    : 'border-purple-500/30 bg-gradient-to-r from-purple-500/5 to-pink-500/5 hover:border-purple-500/50'
-                }`}
-              >
-                {/* Gradient overlay for special effect */}
+            <div
+              onClick={hasExistingVoicePreference ? undefined : handleCustomVoiceClick}
+              className={`flex items-center p-4 rounded-xl border-2 transition-all duration-300 cursor-pointer hover:scale-[1.02] relative overflow-hidden w-full ${
+                state.voicePreference === 'custom'
+                  ? 'border-purple-500 bg-purple-500/10 shadow-lg shadow-purple-500/20'
+                  : state.voicePreference === 'custom_uploaded'
+                  ? 'border-green-500 bg-green-500/10 shadow-lg shadow-green-500/20'
+                  : hasExistingVoicePreference
+                  ? 'border-gray-500/30 bg-gray-500/5 cursor-not-allowed opacity-50'
+                  : 'border-purple-500/30 bg-gradient-to-r from-purple-500/5 to-pink-500/5 hover:border-purple-500/50'
+              }`}
+            >
+              {/* Gradient overlay for special effect */}
+              {!hasExistingVoicePreference && (
                 <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-pink-500/10 opacity-50" />
-                
-                {/* Custom Voice Avatar */}
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mr-4 flex-shrink-0 relative z-10">
-                  <Mic className="w-6 h-6 text-white" />
-                </div>
-
-                {/* Custom Voice Info */}
-                <div className="flex-grow min-w-0 relative z-10">
-                  <div className="flex items-center justify-between mb-1">
-                    <h3 className="text-lg font-semibold text-white font-heading">
-                      {state.voicePreference === 'custom_uploaded' ? 'Your Custom Voice' : 'Create Your Own'}
-                    </h3>
-                    {state.voicePreference === 'custom_uploaded' && (
-                      <span className="px-2 py-1 bg-green-500/20 text-green-300 text-xs rounded-full font-medium flex-shrink-0">
-                        ✓ Uploaded
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-white/70 text-sm font-body">
-                    {state.voicePreference === 'custom_uploaded' 
-                      ? 'Your personalized voice clone is ready'
-                      : 'Record or upload your voice for a personalized experience'
-                    }
-                  </p>
-                </div>
+              )}
+              
+              {/* Custom Voice Avatar */}
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 flex-shrink-0 relative z-10 ${
+                hasExistingVoicePreference 
+                  ? 'bg-gray-500' 
+                  : 'bg-gradient-to-br from-purple-500 to-pink-500'
+              }`}>
+                <Mic className="w-6 h-6 text-white" />
               </div>
-            )}
+
+              {/* Custom Voice Info */}
+              <div className="flex-grow min-w-0 relative z-10">
+                <div className="flex items-center justify-between mb-1">
+                  <h3 className="text-lg font-semibold text-white font-heading">
+                    {state.voicePreference === 'custom_uploaded' 
+                      ? 'Your Custom Voice' 
+                      : hasExistingVoicePreference 
+                      ? 'Create Your Own' 
+                      : 'Create Your Own'
+                    }
+                  </h3>
+                  {state.voicePreference === 'custom_uploaded' && (
+                    <span className="px-2 py-1 bg-green-500/20 text-green-300 text-xs rounded-full font-medium flex-shrink-0">
+                      ✓ Uploaded
+                    </span>
+                  )}
+                  {hasExistingVoicePreference && (
+                    <span className="px-2 py-1 bg-gray-500/20 text-gray-300 text-xs rounded-full font-medium flex-shrink-0">
+                      Voice Set
+                    </span>
+                  )}
+                </div>
+                <p className="text-white/70 text-sm font-body">
+                  {state.voicePreference === 'custom_uploaded' 
+                    ? 'Your personalized voice clone is ready'
+                    : hasExistingVoicePreference
+                    ? 'You already created a voice clone. Upgrade your account to change.'
+                    : 'Record or upload your voice for a personalized experience'
+                  }
+                </p>
+              </div>
+            </div>
 
             {/* Regular Voices from ElevenLabs - Compact Mobile Layout */}
             {voices.map((voice) => {
