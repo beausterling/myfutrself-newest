@@ -122,7 +122,7 @@ const TwilioSetup = () => {
           </div>
           <h1 className="text-4xl font-bold mb-6 font-heading">Set Up Your Phone Connection</h1>
           <p className="text-text-secondary text-lg leading-relaxed font-body">
-            We'll set up a dedicated phone number for your future self to call you. Let's test the connection to make sure everything works perfectly.
+            We'll set up a dedicated phone number for your future self to call you.
           </p>
         </div>
 
