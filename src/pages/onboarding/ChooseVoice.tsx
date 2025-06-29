@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser, useAuth, useClerk } from '@clerk/clerk-react';
-import { AlertCircle, Mic, Play, Pause, X, CreditCard, Loader2, Upload, Square, RotateCcw, Check, MicVocal } from 'lucide-react';
+import { AlertCircle, Mic, Play, Pause, X, CreditCard, Loader2, Upload, Square, RotateCcw, Check, Radical as MicVocal } from 'lucide-react';
 import { useOnboarding } from '../../contexts/OnboardingContext';
 import { useElevenLabsVoices } from '../../hooks/useElevenLabsVoices';
 import { useVoiceStorage } from '../../hooks/useVoiceStorage';
