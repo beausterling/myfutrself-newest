@@ -920,14 +920,12 @@ const ChooseVoice = () => {
                       <span className="text-white text-xs font-bold">💡</span>
                     </div>
                     <div className="text-left">
-                      <h4 className="text-blue-400 font-semibold text-sm mb-2 font-heading">Tips for Best Voice Cloning</h4>
+                      <h4 className="text-blue-400 font-semibold text-sm mb-2 font-heading">Tips for Voice Cloning</h4>
                       <ul className="text-blue-300 text-xs space-y-1 font-body">
-                        <li>• <strong>Use natural conversational speech</strong> - speak as you would to a friend</li>
-                        <li>• <strong>Vary your tone and pace</strong> - include excitement, calm moments, and emphasis</li>
-                        <li>• <strong>Record in a quiet environment</strong> with minimal background noise</li>
-                        <li>• <strong>Maintain consistent distance</strong> from your microphone (6-12 inches)</li>
-                        <li>• <strong>Speak clearly</strong> but naturally - avoid monotone or overly formal speech</li>
-                        <li>• <strong>Include different emotions</strong> - happiness, determination, encouragement</li>
+                        <li>• <strong>Use natural conversational speech</strong></li>
+                        <li>• <strong>Vary your tone and pace</strong></li>
+                        <li>• <strong>Record in a quiet environment</strong></li>
+                        <li>• <strong>Maintain consistent distance from mic</stron</li>
                       </ul>
                     </div>
                   </div>
