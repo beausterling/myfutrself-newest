@@ -1,0 +1,15 @@
+eslint.config.js
+index.html
+package.json
+README.md
+src/components/Footer.tsx
+src/components/ui/LoadingScreen.tsx
+src/hooks/useScrollbarVisibility.ts
+src/pages/NotFound.tsx
+src/pages/Waitlist.tsx
+tsconfig.app.json
+tsconfig.json
+tsconfig.node.json
+vite.config.ts
+src/pages/Dashboard.tsx
+src/pages/Landing.tsx
