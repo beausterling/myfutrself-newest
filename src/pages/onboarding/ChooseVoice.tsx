@@ -344,13 +344,13 @@ const ChooseVoice = () => {
 
       const interval = setInterval(() => {
         setRecordingTime(prev => {
-          if (prev >= 30) {
+          if (prev >= 120) {
             console.log('⏰ Recording time limit reached, stopping');
             recorder.stop();
             setIsRecording(false);
             clearInterval(interval);
             setRecordingInterval(null);
-            return 30;
+            return 120;
           }
           return prev + 1;
         });
@@ -835,7 +835,7 @@ const ChooseVoice = () => {
                     <Mic className="w-10 h-10 text-white" />
                   </button>
                   <p className="text-white font-medium">Click to start recording</p>
-                  <p className="text-white/60 text-sm">30 seconds maximum</p>
+                  <p className="text-white/60 text-sm">Up to 2 minutes</p>
                 </div>
               )}
 
@@ -847,7 +847,7 @@ const ChooseVoice = () => {
                       <Mic className="w-10 h-10 text-white" />
                     </div>
                     <div>
-                      <p className="text-white text-xl font-bold">{recordingTime}s / 30s</p>
+                      <p className="text-white text-xl font-bold">{recordingTime}s / 120s</p>
                       <button
                         onClick={stopRecording}
                         className="mt-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
@@ -920,10 +920,33 @@ const ChooseVoice = () => {
                       <span className="text-white text-xs font-bold">💡</span>
                     </div>
                     <div className="text-left">
-                      <h4 className="text-blue-400 font-semibold text-sm mb-2 font-heading">Tip for Best Results</h4>
+                      <h4 className="text-blue-400 font-semibold text-sm mb-2 font-heading">Tips for Best Voice Cloning</h4>
                       <ul className="text-blue-300 text-xs space-y-1 font-body">
-                        <li>• Find a quiet environment, use your best microphone, and maintain consistent distance from the mic.</li>
+                        <li>• <strong>Use natural conversational speech</strong> - speak as you would to a friend</li>
+                        <li>• <strong>Vary your tone and pace</strong> - include excitement, calm moments, and emphasis</li>
+                        <li>• <strong>Record in a quiet environment</strong> with minimal background noise</li>
+                        <li>• <strong>Maintain consistent distance</strong> from your microphone (6-12 inches)</li>
+                        <li>• <strong>Speak clearly</strong> but naturally - avoid monotone or overly formal speech</li>
+                        <li>• <strong>Include different emotions</strong> - happiness, determination, encouragement</li>
                       </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Recording Tips During Recording */}
+              {isRecording && (
+                <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 mb-6">
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="text-white text-xs font-bold">🎤</span>
+                    </div>
+                    <div className="text-left">
+                      <h4 className="text-green-400 font-semibold text-sm mb-2 font-heading">Recording in Progress</h4>
+                      <p className="text-green-300 text-xs font-body">
+                        Speak naturally and vary your tone. Try saying something like: "Hi there! I'm excited to help you reach your goals. 
+                        Sometimes the journey gets tough, but I believe in you. Let's work together to make your dreams a reality!"
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -943,7 +966,7 @@ const ChooseVoice = () => {
                     <div className="border border-dashed border-white/30 rounded-lg p-3 text-center hover:border-white/50 transition-colors cursor-pointer">
                       <Upload className="w-5 h-5 text-white/60 mx-auto mb-1" />
                       <p className="text-white/70 text-sm">Upload audio file</p>
-                      <p className="text-white/50 text-xs">MP3, WAV, M4A (30s max)</p>
+                      <p className="text-white/50 text-xs">MP3, WAV, M4A, WEBM (2 min max)</p>
                     </div>
                   </label>
                 </div>
@@ -963,7 +986,7 @@ const ChooseVoice = () => {
                     <div className="border border-dashed border-white/30 rounded-lg p-3 text-center hover:border-white/50 transition-colors cursor-pointer">
                       <Upload className="w-5 h-5 text-white/60 mx-auto mb-1" />
                       <p className="text-white/70 text-sm">Upload audio file</p>
-                      <p className="text-white/50 text-xs">MP3, WAV, M4A (30s max)</p>
+                      <p className="text-white/50 text-xs">MP3, WAV, M4A, WEBM (2 min max)</p>
                     </div>
                   </label>
                 </div>
