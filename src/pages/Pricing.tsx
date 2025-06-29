@@ -138,41 +138,6 @@ const Pricing = () => {
         </div>
       </div>
 
-      {/* Billing Toggle */}
-      <div className="container mx-auto px-4 pb-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="flex justify-center"
-        >
-          <div className="bg-white/5 backdrop-blur-lg rounded-xl border border-white/10 p-1 flex">
-            <button
-              onClick={() => setBillingCycle('monthly')}
-              className={`px-6 py-2 rounded-lg font-medium transition-all duration-300 ${
-                billingCycle === 'monthly'
-                  ? 'bg-blue-600 text-white shadow-lg'
-                  : 'text-white/70 hover:text-white'
-              }`}
-            >
-              Monthly
-            </button>
-            <button
-              onClick={() => setBillingCycle('annual')}
-              className={`px-6 py-2 rounded-lg font-medium transition-all duration-300 relative ${
-                billingCycle === 'annual'
-                  ? 'bg-blue-600 text-white shadow-lg'
-                  : 'text-white/70 hover:text-white'
-              }`}
-            >
-              Annual
-              <span className="absolute -top-2 -right-2 bg-purple-500 text-white text-xs px-2 py-0.5 rounded-full">
-                Save {getDiscountPercentage(plans.starter)}%
-              </span>
-            </button>
-          </div>
-        </motion.div>
-      </div>
 
       {/* Compact Pricing Cards */}
       <div className="container mx-auto px-4 pb-16">
@@ -236,6 +201,39 @@ const Pricing = () => {
           ))}
         </div>
 
+        {/* Billing Toggle - Moved below plans */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.6 }}
+          className="flex justify-center mb-12"
+        >
+          <div className="bg-white/5 backdrop-blur-lg rounded-xl border border-white/10 p-1 flex">
+            <button
+              onClick={() => setBillingCycle('monthly')}
+              className={`px-6 py-2 rounded-lg font-medium transition-all duration-300 ${
+                billingCycle === 'monthly'
+                  ? 'bg-gradient-to-r from-primary-aqua to-primary-blue text-white shadow-lg'
+                  : 'text-white/70 hover:text-white'
+              }`}
+            >
+              Monthly
+            </button>
+            <button
+              onClick={() => setBillingCycle('annual')}
+              className={`px-6 py-2 rounded-lg font-medium transition-all duration-300 relative ${
+                billingCycle === 'annual'
+                  ? 'bg-gradient-to-r from-primary-aqua to-primary-blue text-white shadow-lg'
+                  : 'text-white/70 hover:text-white'
+              }`}
+            >
+              Annual
+              <span className="absolute -top-2 -right-2 bg-purple-500 text-white text-xs px-2 py-0.5 rounded-full">
+                Save {getDiscountPercentage(plans.starter)}%
+              </span>
+            </button>
+          </div>
+        </motion.div>
         {/* Selected Plan Features */}
         <motion.div
           key={`${selectedPlan}-${billingCycle}`}
