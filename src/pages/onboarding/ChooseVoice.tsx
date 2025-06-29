@@ -29,7 +29,13 @@ const ChooseVoice = () => {
   const [isPlayingRecording, setIsPlayingRecording] = useState(false);
   const [playbackAudio, setPlaybackAudio] = useState<HTMLAudioElement | null>(null);
   const [existingVoiceRecording, setExistingVoiceRecording] = useState<string | null>(null);
-  const { uploadVoiceRecording, isUploading: isUploadingVoice } = useVoiceStorage();
+  const [isLoadingCustomVoice, setIsLoadingCustomVoice] = useState(false);
+  const { 
+    uploadVoiceRecording, 
+    downloadVoiceRecording,
+    isUploading: isUploadingVoice,
+    isDownloading: isDownloadingVoice 
+  } = useVoiceStorage();
 
   // Disable ALL background scrolling when modal is open
   useEffect(() => {
@@ -156,15 +162,39 @@ const ChooseVoice = () => {
   const handleCustomVoiceClick = () => {
     console.log('🎯 Custom voice option clicked - showing voice modal');
     
-    // If there's existing voice recording, show the completion state
+    // If there's existing voice recording, download it and show the completion state
     if (existingVoiceRecording) {
-      console.log('📁 Existing voice recording found, showing completion state');
+      console.log('📁 Existing voice recording found, downloading and showing completion state');
       setShowVoiceModal(true);
-      // Simulate having a completed recording by setting a placeholder blob
-      // This will trigger the "Recording Complete!" view
-      setAudioBlob(new Blob(['placeholder'], { type: 'audio/wav' }));
-      setRecordingTime(30); // Show as completed recording
+      setIsLoadingCustomVoice(true);
+      
+      // Download the existing voice recording
+      downloadVoiceRecording(existingVoiceRecording)
+        .then((result) => {
+          if (result.success && result.blob) {
+            console.log('✅ Successfully downloaded existing voice recording');
+            setAudioBlob(result.blob);
+            setRecordingTime(30); // Show as completed recording
+          } else {
+            console.error('❌ Failed to download existing voice recording:', result.error);
+            setSaveError(result.error || 'Failed to load existing voice recording');
+            // Reset to show "Start Recording" view
+            setAudioBlob(null);
+            setRecordingTime(0);
+          }
+        })
+        .catch((error) => {
+          console.error('❌ Error downloading existing voice recording:', error);
+          setSaveError('Failed to load existing voice recording');
+          // Reset to show "Start Recording" view
+          setAudioBlob(null);
+          setRecordingTime(0);
+        })
+        .finally(() => {
+          setIsLoadingCustomVoice(false);
+        });
     } else {
+      console.log('📁 No existing voice recording found, requesting microphone permission');
       requestMicrophonePermission();
     }
   };
@@ -694,11 +724,23 @@ const ChooseVoice = () => {
                 {isRecording ? 'Recording in progress...' : audioBlob ? 'Recording completed!' : 'Ready to record your voice'}
               </p>
               
+              {/* Loading Indicator for Downloading Existing Recording */}
+              {isLoadingCustomVoice && (
+                <div className="text-center mb-6">
+                  <div className="w-24 h-24 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  </div>
+                  <p className="text-blue-400 text-lg font-bold">Loading your voice recording...</p>
+                  <p className="text-white/70 text-sm">Please wait while we fetch your custom voice</p>
+                </div>
+              )}
+              
               {/* Start Recording Button - Only show when not recording and no audio */}
-              {!isRecording && !audioBlob && (
+              {!isRecording && !audioBlob && !isLoadingCustomVoice && (
                 <div className="text-center mb-6">
                   <button
                     onClick={startRecording}
+                    disabled={isLoadingCustomVoice}
                     className="w-24 h-24 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4 hover:scale-105 transition-transform"
                   >
                     <Mic className="w-10 h-10 text-white" />
@@ -709,7 +751,7 @@ const ChooseVoice = () => {
               )}
 
               {/* Recording Status Display */}
-              <div className="mb-6">
+              {!isLoadingCustomVoice && <div className="mb-6">
                 {isRecording && (
                   <div className="text-center space-y-4">
                     <div className="w-24 h-24 bg-red-500 rounded-full flex items-center justify-center mx-auto animate-pulse">
@@ -720,6 +762,7 @@ const ChooseVoice = () => {
                       <button
                         onClick={stopRecording}
                         className="mt-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                        disabled={isLoadingCustomVoice}
                       >
                         <Square className="w-4 h-4 inline mr-2" />
                         Stop Recording
@@ -749,6 +792,7 @@ const ChooseVoice = () => {
                         <button
                           onClick={isPlayingRecording ? stopPlayback : playRecording}
                           className="btn btn-outline flex items-center gap-2"
+                          disabled={isLoadingCustomVoice}
                         >
                           {isPlayingRecording ? (
                             <>
@@ -766,7 +810,7 @@ const ChooseVoice = () => {
                       
                       <button
                         onClick={startNewRecording}
-                        disabled={isPlayingRecording && !existingVoiceRecording}
+                        disabled={(isPlayingRecording && !existingVoiceRecording) || isLoadingCustomVoice}
                         className={`btn transition-all duration-300 flex items-center gap-2 ${
                           (isPlayingRecording && !existingVoiceRecording)
                             ? 'bg-transparent text-gray-400 border border-gray-600 cursor-not-allowed hover:bg-transparent'
@@ -779,10 +823,10 @@ const ChooseVoice = () => {
                     </div>
                   </div>
                 )}
-              </div>
+              </div>}
 
               {/* Helpful Tips Section */}
-              {!isRecording && !audioBlob && (
+              {!isRecording && !audioBlob && !isLoadingCustomVoice && (
                 <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 mb-6">
                   <div className="flex items-start gap-3">
                     <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -799,7 +843,7 @@ const ChooseVoice = () => {
               )}
               
               {/* Upload Option - Only show when not recording and no audio */}
-              {!isRecording && !audioBlob && (
+              {!isRecording && !audioBlob && !isLoadingCustomVoice && (
                 <div className="text-center mb-6">
                   <p className="text-white/60 text-sm mb-3">or</p>
                   <label className="block">
@@ -807,6 +851,7 @@ const ChooseVoice = () => {
                       type="file"
                       accept="audio/*"
                       onChange={handleFileUpload}
+                      disabled={isLoadingCustomVoice}
                       className="hidden"
                     />
                     <div className="border border-dashed border-white/30 rounded-lg p-3 text-center hover:border-white/50 transition-colors cursor-pointer">
@@ -822,13 +867,14 @@ const ChooseVoice = () => {
               <div className="flex gap-3">
                 <button
                   onClick={handleVoiceModalClose}
+                  disabled={isLoadingCustomVoice}
                   className="flex-1 btn btn-outline font-heading"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleVoiceSubmit}
-                  disabled={(!audioBlob && !existingVoiceRecording) || isRecording || isUploadingVoice || isSaving}
+                  disabled={(!audioBlob && !existingVoiceRecording) || isRecording || isUploadingVoice || isSaving || isLoadingCustomVoice}
                   className={`flex-1 btn font-heading transition-all duration-300 ${
                     (audioBlob || existingVoiceRecording) && !isRecording && !isUploadingVoice && !isSaving
                       ? 'btn-primary' 
@@ -836,7 +882,7 @@ const ChooseVoice = () => {
                   }`}
                 >
                   {isRecording ? 'Recording...' : 
-                   isUploadingVoice || isSaving ? (
+                   isUploadingVoice || isSaving || isLoadingCustomVoice ? (
                      <>
                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
                        {existingVoiceRecording ? 'Processing...' : 'Uploading...'}
@@ -1025,18 +1071,19 @@ const ChooseVoice = () => {
         <div className="mt-16 flex justify-between max-w-md mx-auto">
           <button 
             onClick={handleBack} 
-            className="btn btn-outline text-lg px-8 py-4 font-heading"
+            className={`btn btn-outline text-lg px-8 py-4 font-heading ${isLoadingCustomVoice ? 'opacity-50 cursor-not-allowed' : ''}`}
+            disabled={isLoadingCustomVoice}
           >
             Back
           </button>
           <button
             onClick={handleNext}
             className={`text-lg px-8 py-4 font-heading transition-all duration-300 rounded-xl border ${
-              state.voicePreference && state.voicePreference !== 'custom'
+              state.voicePreference && state.voicePreference !== 'custom' && !isLoadingCustomVoice
                 ? 'btn btn-primary'
                 : 'bg-transparent text-gray-400 border-gray-600 cursor-not-allowed hover:bg-transparent'
             }`}
-            disabled={!state.voicePreference || state.voicePreference === 'custom'}
+            disabled={!state.voicePreference || state.voicePreference === 'custom' || isLoadingCustomVoice}
           >
             Continue
           </button>

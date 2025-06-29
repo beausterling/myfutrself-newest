@@ -9,10 +9,17 @@ interface VoiceUploadResult {
   error?: string;
 }
 
+interface VoiceDownloadResult {
+  success: boolean;
+  blob?: Blob;
+  error?: string;
+}
+
 export const useVoiceStorage = () => {
   const { user } = useUser();
   const { getToken } = useAuth();
   const [isUploading, setIsUploading] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   const uploadVoiceRecording = async (audioBlob: Blob): Promise<VoiceUploadResult> => {
@@ -124,6 +131,73 @@ export const useVoiceStorage = () => {
       };
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const downloadVoiceRecording = async (filePath: string): Promise<VoiceDownloadResult> => {
+    if (!user?.id) {
+      const error = 'User authentication required';
+      console.error('❌ Download failed:', error);
+      setUploadError(error);
+      return { success: false, error };
+    }
+
+    if (!filePath) {
+      const error = 'File path is required';
+      console.error('❌ Download failed:', error);
+      setUploadError(error);
+      return { success: false, error };
+    }
+
+    try {
+      setIsDownloading(true);
+      setUploadError(null);
+      console.log('📥 Starting voice recording download for user:', user.id);
+      console.log('📁 File path:', filePath);
+
+      // Get authentication token
+      const token = await getToken({ template: 'supabase' });
+      if (!token) {
+        throw new Error('No authentication token available');
+      }
+
+      const supabase = createAuthenticatedSupabaseClient(token);
+
+      // Download the file from Supabase Storage
+      console.log('📥 Downloading file from voice_recordings bucket');
+      const { data: fileData, error: downloadError } = await supabase.storage
+        .from('voice_recordings')
+        .download(filePath);
+
+      if (downloadError) {
+        console.error('❌ Storage download error:', downloadError);
+        throw new Error(`Failed to download recording: ${downloadError.message}`);
+      }
+
+      if (!fileData) {
+        console.error('❌ No file data received from storage');
+        throw new Error('No file data received from storage');
+      }
+
+      console.log('✅ Voice recording downloaded successfully');
+      console.log('📊 Downloaded file size:', fileData.size, 'bytes');
+      console.log('📊 Downloaded file type:', fileData.type);
+
+      return {
+        success: true,
+        blob: fileData
+      };
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to download voice recording';
+      console.error('❌ Voice recording download failed:', error);
+      setUploadError(errorMessage);
+      return {
+        success: false,
+        error: errorMessage
+      };
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -266,10 +340,12 @@ export const useVoiceStorage = () => {
 
   return {
     uploadVoiceRecording,
+    downloadVoiceRecording,
     deleteVoiceRecording,
     getVoiceRecordingPath,
     listVoiceRecordings,
     isUploading,
+    isDownloading,
     uploadError,
     clearError: () => setUploadError(null)
   };
