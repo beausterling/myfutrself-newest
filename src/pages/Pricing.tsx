@@ -137,8 +137,9 @@ const Pricing = () => {
                   {plan}
                 </h3>
                 <div className="text-3xl font-bold font-heading">
-                  {plan === 'free' ? 'Free' : plan === 'starter' ? '$12' : '$29'}
+                  {plan === 'free' ? '$0' : plan === 'starter' ? '$12' : '$29'}
                   {plan !== 'free' && <span className="text-lg text-white/60">/month</span>}
+                  {plan === 'free' && <span className="text-lg text-white/60">/month</span>}
                 </div>
               </div>
 
