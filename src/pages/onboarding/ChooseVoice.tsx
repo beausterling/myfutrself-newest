@@ -719,9 +719,9 @@ const ChooseVoice = () => {
                       <button
                         onClick={startNewRecording}
                         disabled={isPlayingRecording}
-                        className={`btn transition-colors flex items-center gap-2 ${
+                        className={`btn transition-all duration-300 flex items-center gap-2 ${
                           isPlayingRecording 
-                            ? 'btn-disabled cursor-not-allowed'
+                            ? 'bg-transparent text-gray-400 border border-gray-600 cursor-not-allowed hover:bg-transparent'
                             : 'btn-outline'
                         }`}
                       >
@@ -764,13 +764,13 @@ const ChooseVoice = () => {
                 <button
                   onClick={handleVoiceSubmit}
                   disabled={!audioBlob || isRecording}
-                  className={`flex-1 btn font-heading transition-colors ${
+                  className={`flex-1 btn font-heading transition-all duration-300 ${
                     audioBlob && !isRecording
                       ? 'btn-primary' 
-                      : 'btn-disabled cursor-not-allowed'
+                      : 'bg-transparent text-gray-400 border border-gray-600 cursor-not-allowed hover:bg-transparent'
                   }`}
                 >
-                  {isRecording ? 'Recording...' : 'Create Voice Clone'}
+                  {isRecording ? 'Recording...' : 'Submit'}
                 </button>
               </div>
             </div>
