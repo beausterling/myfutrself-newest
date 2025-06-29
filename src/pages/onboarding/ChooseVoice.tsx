@@ -925,7 +925,7 @@ const ChooseVoice = () => {
                         <li>• <strong>Use natural conversational speech</strong></li>
                         <li>• <strong>Vary your tone and pace</strong></li>
                         <li>• <strong>Record in a quiet environment</strong></li>
-                        <li>• <strong>Maintain consistent distance from mic</stron</li>
+                        <li>• <strong>Maintain consistent distance from mic</strong></li>
                       </ul>
                     </div>
                   </div>
