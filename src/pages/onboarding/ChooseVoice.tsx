@@ -676,12 +676,9 @@ const ChooseVoice = () => {
                       <span className="text-white text-xs font-bold">💡</span>
                     </div>
                     <div className="text-left">
-                      <h4 className="text-blue-400 font-semibold text-sm mb-2 font-heading">Tips for Best Results</h4>
+                      <h4 className="text-blue-400 font-semibold text-sm mb-2 font-heading">Tip for Best Results</h4>
                       <ul className="text-blue-300 text-xs space-y-1 font-body">
-                        <li>• Find a quiet environment with minimal background noise</li>
-                        <li>• Use your best microphone or headset if available</li>
-                        <li>• Speak clearly and at a natural pace</li>
-                        <li>• Keep a consistent distance from the microphone</li>
+                        <li>• Find a quiet environment, use your best microphone, and maintain consistent distance from the mic.</li>
                       </ul>
                     </div>
                   </div>
