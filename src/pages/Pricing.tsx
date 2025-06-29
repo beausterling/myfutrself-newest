@@ -289,11 +289,6 @@ const Pricing = () => {
               <button className="btn btn-primary text-lg px-8 py-4 font-heading w-full sm:w-auto">
                 {selectedPlan === 'free' ? 'Get Started Free' : `Choose ${plans[selectedPlan as keyof typeof plans].name}`}
               </button>
-              {selectedPlan !== 'free' && (
-                <p className="text-white/60 text-sm mt-3">
-                  14-day free trial • No credit card required
-                </p>
-              )}
             </div>
           </div>
         </motion.div>
@@ -326,10 +321,10 @@ const Pricing = () => {
 
               <div className="bg-white/5 backdrop-blur-lg rounded-xl border border-white/10 p-6">
                 <h3 className="text-lg font-semibold mb-3 font-heading">
-                  Is there a free trial?
+                  How does billing work?
                 </h3>
                 <p className="text-white/80 font-body">
-                  Yes! All paid plans come with a 14-day free trial. No credit card required to start your free account.
+                  You'll be charged monthly or annually based on your selected plan. All payments are processed securely through Stripe.
                 </p>
               </div>
 
@@ -364,10 +359,10 @@ const Pricing = () => {
 
               <div className="bg-white/5 backdrop-blur-lg rounded-xl border border-white/10 p-6">
                 <h3 className="text-lg font-semibold mb-3 font-heading">
-                  Do you offer refunds?
+                  What if I'm not satisfied?
                 </h3>
                 <p className="text-white/80 font-body">
-                  We offer a 14-day free trial so you can test everything risk-free. For annual subscriptions, we offer prorated refunds within 30 days.
+                  You can cancel your subscription at any time. For annual subscriptions, we offer prorated refunds within 30 days of purchase.
                 </p>
               </div>
             </div>
@@ -392,9 +387,6 @@ const Pricing = () => {
           <button className="btn btn-primary text-lg px-8 py-4 font-heading">
             Get Started Free
           </button>
-          <p className="text-white/60 text-sm mt-3">
-            14-day free trial • No credit card required • Cancel anytime
-          </p>
         </motion.div>
       </div>
     </div>
