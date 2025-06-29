@@ -543,6 +543,9 @@ const ChooseVoice = () => {
       // Set voice preference to indicate user has uploaded their voice
       dispatch({ type: 'SET_VOICE', payload: 'custom_uploaded' });
       
+      // Save voice preference to database immediately for persistence
+      await saveVoicePreference();
+      
       // Clean up and close modal
       setAudioBlob(null);
       setRecordingTime(0);
@@ -662,8 +665,19 @@ const ChooseVoice = () => {
       return;
     }
 
-    dispatch({ type: 'NEXT_STEP' });
-    navigate('/onboarding/twilio-setup');
+    // Save voice preference before proceeding (for non-custom voices)
+    if (state.voicePreference !== 'custom' && state.voicePreference !== 'custom_uploaded') {
+      saveVoicePreference().then(() => {
+        dispatch({ type: 'NEXT_STEP' });
+        navigate('/onboarding/twilio-setup');
+      }).catch((error) => {
+        console.error('❌ Error saving voice preference before proceeding:', error);
+        setSaveError('Failed to save voice preference. Please try again.');
+      });
+    } else {
+      dispatch({ type: 'NEXT_STEP' });
+      navigate('/onboarding/twilio-setup');
+    }
   };
 
   const handleBack = () => {
@@ -788,25 +802,23 @@ const ChooseVoice = () => {
                     
                     {/* Playback Controls */}
                     <div className="flex justify-center gap-3 mt-4">
-                      {!existingVoiceRecording && (
-                        <button
-                          onClick={isPlayingRecording ? stopPlayback : playRecording}
-                          className="btn btn-outline flex items-center gap-2"
-                          disabled={isLoadingCustomVoice}
-                        >
-                          {isPlayingRecording ? (
-                            <>
-                              <Pause className="w-4 h-4" />
-                              Stop
-                            </>
-                          ) : (
-                            <>
-                              <Play className="w-4 h-4" />
-                              Play
-                            </>
-                          )}
-                        </button>
-                      )}
+                      <button
+                        onClick={isPlayingRecording ? stopPlayback : playRecording}
+                        className="btn btn-outline flex items-center gap-2"
+                        disabled={isLoadingCustomVoice}
+                      >
+                        {isPlayingRecording ? (
+                          <>
+                            <Pause className="w-4 h-4" />
+                            Stop
+                          </>
+                        ) : (
+                          <>
+                            <Play className="w-4 h-4" />
+                            Play
+                          </>
+                        )}
+                      </button>
                       
                       <button
                         onClick={startNewRecording}
@@ -857,6 +869,26 @@ const ChooseVoice = () => {
                     <div className="border border-dashed border-white/30 rounded-lg p-3 text-center hover:border-white/50 transition-colors cursor-pointer">
                       <Upload className="w-5 h-5 text-white/60 mx-auto mb-1" />
                       <p className="text-white/70 text-sm">Upload audio file</p>
+                      <p className="text-white/50 text-xs">MP3, WAV, M4A (30s max)</p>
+                    </div>
+                  </label>
+                </div>
+              )}
+              
+              {/* Upload Option - Show above buttons when recording is complete */}
+              {audioBlob && !isRecording && !isLoadingCustomVoice && (
+                <div className="text-center mb-6">
+                  <p className="text-white/60 text-sm mb-3">or upload a different file</p>
+                  <label className="block">
+                    <input
+                      type="file"
+                      accept="audio/*"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                    <div className="border border-dashed border-white/30 rounded-lg p-3 text-center hover:border-white/50 transition-colors cursor-pointer">
+                      <Upload className="w-5 h-5 text-white/60 mx-auto mb-1" />
+                      <p className="text-white/70 text-sm">Upload different audio file</p>
                       <p className="text-white/50 text-xs">MP3, WAV, M4A (30s max)</p>
                     </div>
                   </label>
