@@ -163,20 +163,15 @@ const TwilioSetup = () => {
               Phone Number Assignment
             </h3>
             <p className="text-white/70 mb-6 font-body">
-              We're assigning you a dedicated phone number that your future self will use to contact you. This ensures a consistent and personalized experience.
+              Get a dedicated phone number that your future self will use to contact you. This ensures a consistent and personalized experience.
             </p>
             
-            <div className="bg-primary-aqua/10 border border-primary-aqua/20 rounded-xl p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-3 h-3 bg-primary-aqua rounded-full animate-pulse"></div>
-                <span className="text-primary-aqua font-medium font-heading">
-                  Setting up your dedicated number...
-                </span>
-              </div>
-              <p className="text-primary-aqua/80 text-sm mt-2 font-body">
-                This process typically takes a few seconds
-              </p>
-            </div>
+            <button
+              onClick={() => window.open('https://clerk.com/pricing', '_blank')}
+              className="btn btn-primary w-full text-lg py-4 font-heading"
+            >
+              Create New Number
+            </button>
           </div>
 
           {/* Test Call Card */}
