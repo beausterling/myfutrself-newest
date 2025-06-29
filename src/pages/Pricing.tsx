@@ -88,10 +88,6 @@ const Pricing = () => {
                 <Check className="w-4 h-4 text-green-400" />
                 <span>Cancel anytime</span>
               </div>
-              <div className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-green-400" />
-                <span>14-day free trial</span>
-              </div>
             </div>
           </motion.div>
         </div>
