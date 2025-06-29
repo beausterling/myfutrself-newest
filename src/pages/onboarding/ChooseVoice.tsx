@@ -24,33 +24,47 @@ const ChooseVoice = () => {
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [recordingInterval, setRecordingInterval] = useState<NodeJS.Timeout | null>(null);
 
-  // Disable background scrolling when modal is open
+  // Disable ALL background scrolling when modal is open
   useEffect(() => {
     if (showVoiceModal) {
-      // Disable scrolling on the body
+      // Store original overflow values
+      const originalBodyOverflow = document.body.style.overflow;
+      const originalHtmlOverflow = document.documentElement.style.overflow;
+      
+      // Disable scrolling on both html and body elements
+      document.documentElement.style.overflow = 'hidden';
       document.body.style.overflow = 'hidden';
-      // Also disable scrolling on the main container
-      const mainContainer = document.querySelector('.onboarding-container');
-      if (mainContainer) {
-        (mainContainer as HTMLElement).style.overflow = 'hidden';
-      }
+      
+      // Prevent touch scrolling on mobile
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
+      document.body.style.top = `-${window.scrollY}px`;
+      
+      // Store scroll position
+      const scrollY = window.scrollY;
+      
+      // Cleanup function
+      return () => {
+        // Restore original overflow values
+        document.documentElement.style.overflow = originalHtmlOverflow;
+        document.body.style.overflow = originalBodyOverflow;
+        
+        // Restore body position and scroll
+        document.body.style.position = '';
+        document.body.style.width = '';
+        document.body.style.top = '';
+        
+        // Restore scroll position
+        window.scrollTo(0, scrollY);
+      };
     } else {
-      // Re-enable scrolling
+      // Re-enable scrolling when modal is closed
+      document.documentElement.style.overflow = '';
       document.body.style.overflow = '';
-      const mainContainer = document.querySelector('.onboarding-container');
-      if (mainContainer) {
-        (mainContainer as HTMLElement).style.overflow = '';
-      }
+      document.body.style.position = '';
+      document.body.style.width = '';
+      document.body.style.top = '';
     }
-
-    // Cleanup function to ensure scrolling is re-enabled when component unmounts
-    return () => {
-      document.body.style.overflow = '';
-      const mainContainer = document.querySelector('.onboarding-container');
-      if (mainContainer) {
-        (mainContainer as HTMLElement).style.overflow = '';
-      }
-    };
   }, [showVoiceModal]);
 
   const {
