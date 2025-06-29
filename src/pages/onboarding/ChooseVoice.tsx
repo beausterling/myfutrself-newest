@@ -668,6 +668,26 @@ const ChooseVoice = () => {
                 {isRecording ? 'Recording in progress...' : audioBlob ? 'Recording completed!' : 'Ready to record your voice'}
               </p>
               
+              {/* Helpful Tips Section */}
+              {!isRecording && !audioBlob && (
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 mb-6">
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="text-white text-xs font-bold">💡</span>
+                    </div>
+                    <div className="text-left">
+                      <h4 className="text-blue-400 font-semibold text-sm mb-2 font-heading">Tips for Best Results</h4>
+                      <ul className="text-blue-300 text-xs space-y-1 font-body">
+                        <li>• Find a quiet environment with minimal background noise</li>
+                        <li>• Use your best microphone or headset if available</li>
+                        <li>• Speak clearly and at a natural pace</li>
+                        <li>• Keep a consistent distance from the microphone</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
               {/* Start Recording Button - Only show when not recording and no audio */}
               {!isRecording && !audioBlob && (
                 <div className="text-center mb-6">
