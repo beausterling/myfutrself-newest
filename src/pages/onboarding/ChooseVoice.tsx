@@ -1127,7 +1127,7 @@ const ChooseVoice = () => {
                     {state.voicePreference === 'custom_uploaded' 
                       ? 'Your Custom Voice' 
                       : hasExistingVoicePreference 
-                      ? 'Create Your Own (Disabled)' 
+                      ? 'Create Your Own' 
                       : 'Create Your Own'
                     }
                   </h3>
@@ -1146,7 +1146,7 @@ const ChooseVoice = () => {
                   {state.voicePreference === 'custom_uploaded' 
                     ? 'Your personalized voice clone is ready'
                     : hasExistingVoicePreference
-                    ? 'You already have a voice selected. Contact support to change.'
+                    ? 'You already created a voice clone. Upgrade your account to change.'
                     : 'Record or upload your voice for a personalized experience'
                   }
                 </p>
