@@ -171,7 +171,7 @@ const TwilioSetup = () => {
             </p>
             
             <button
-              onClick={() => window.open('https://clerk.com/pricing', '_blank')}
+              onClick={handleCreateNewNumber}
               className="btn btn-primary w-full text-lg py-4 font-heading"
             >
               Create New Number
