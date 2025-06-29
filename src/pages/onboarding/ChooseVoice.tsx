@@ -28,6 +28,7 @@ const ChooseVoice = () => {
   const [microphonePermissionGranted, setMicrophonePermissionGranted] = useState(false);
   const [isPlayingRecording, setIsPlayingRecording] = useState(false);
   const [playbackAudio, setPlaybackAudio] = useState<HTMLAudioElement | null>(null);
+  const [existingVoiceRecording, setExistingVoiceRecording] = useState<string | null>(null);
   const { uploadVoiceRecording, isUploading: isUploadingVoice } = useVoiceStorage();
 
   // Disable ALL background scrolling when modal is open
@@ -116,7 +117,7 @@ const ChooseVoice = () => {
         
         const { data: userProfile, error } = await supabase
           .from('user_profiles')
-          .select('voice_preference')
+          .select('voice_preference, custom_voice_audio_path')
           .eq('user_id', user.id)
           .maybeSingle();
 
@@ -129,6 +130,11 @@ const ChooseVoice = () => {
         if (userProfile?.voice_preference) {
           console.log('✅ Loaded existing voice preference:', userProfile.voice_preference);
           dispatch({ type: 'SET_VOICE', payload: userProfile.voice_preference });
+        }
+        
+        if (userProfile?.custom_voice_audio_path) {
+          console.log('✅ Found existing voice recording:', userProfile.custom_voice_audio_path);
+          setExistingVoiceRecording(userProfile.custom_voice_audio_path);
         }
         
         setHasLoadedFromDB(true);
@@ -149,7 +155,18 @@ const ChooseVoice = () => {
 
   const handleCustomVoiceClick = () => {
     console.log('🎯 Custom voice option clicked - showing voice modal');
-    requestMicrophonePermission();
+    
+    // If there's existing voice recording, show the completion state
+    if (existingVoiceRecording) {
+      console.log('📁 Existing voice recording found, showing completion state');
+      setShowVoiceModal(true);
+      // Simulate having a completed recording by setting a placeholder blob
+      // This will trigger the "Recording Complete!" view
+      setAudioBlob(new Blob(['placeholder'], { type: 'audio/wav' }));
+      setRecordingTime(30); // Show as completed recording
+    } else {
+      requestMicrophonePermission();
+    }
   };
 
   const requestMicrophonePermission = async () => {
@@ -209,8 +226,13 @@ const ChooseVoice = () => {
     
     // Reset all recording-related state
     setIsRecording(false);
-    setRecordingTime(0);
-    setAudioBlob(null);
+    
+    // Only reset recording state if there's no existing recording
+    if (!existingVoiceRecording) {
+      setRecordingTime(0);
+      setAudioBlob(null);
+    }
+    
     setMediaRecorder(null);
     setMicrophonePermissionGranted(false);
     
@@ -415,6 +437,7 @@ const ChooseVoice = () => {
     // Clear existing recording
     setAudioBlob(null);
     setRecordingTime(0);
+    setExistingVoiceRecording(null); // Clear existing recording reference
     
     // Start recording after a brief delay
     setTimeout(() => startRecording(), 300);
@@ -483,6 +506,9 @@ const ChooseVoice = () => {
       }
       
       console.log('✅ Voice recording uploaded successfully:', uploadResult.url);
+      
+      // Update existing recording reference
+      setExistingVoiceRecording(uploadResult.filePath || null);
       
       // Set voice preference to indicate user has uploaded their voice
       dispatch({ type: 'SET_VOICE', payload: 'custom_uploaded' });
@@ -707,33 +733,42 @@ const ChooseVoice = () => {
                     <div className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
                       <Check className="w-10 h-10 text-white" />
                     </div>
-                    <p className="text-green-400 text-lg font-bold">Recording Complete!</p>
-                    <p className="text-white/70 text-sm">Duration: {recordingTime} seconds</p>
+                    <p className="text-green-400 text-lg font-bold">
+                      {existingVoiceRecording ? 'Voice Recording Ready!' : 'Recording Complete!'}
+                    </p>
+                    <p className="text-white/70 text-sm">
+                      {existingVoiceRecording 
+                        ? 'Your custom voice is saved and ready to use'
+                        : `Duration: ${recordingTime} seconds`
+                      }
+                    </p>
                     
                     {/* Playback Controls */}
                     <div className="flex justify-center gap-3 mt-4">
-                      <button
-                        onClick={isPlayingRecording ? stopPlayback : playRecording}
-                        className="btn btn-outline flex items-center gap-2"
-                      >
-                        {isPlayingRecording ? (
-                          <>
-                            <Pause className="w-4 h-4" />
-                            Stop
-                          </>
-                        ) : (
-                          <>
-                            <Play className="w-4 h-4" />
-                            Play
-                          </>
-                        )}
-                      </button>
+                      {!existingVoiceRecording && (
+                        <button
+                          onClick={isPlayingRecording ? stopPlayback : playRecording}
+                          className="btn btn-outline flex items-center gap-2"
+                        >
+                          {isPlayingRecording ? (
+                            <>
+                              <Pause className="w-4 h-4" />
+                              Stop
+                            </>
+                          ) : (
+                            <>
+                              <Play className="w-4 h-4" />
+                              Play
+                            </>
+                          )}
+                        </button>
+                      )}
                       
                       <button
                         onClick={startNewRecording}
-                        disabled={isPlayingRecording}
+                        disabled={isPlayingRecording && !existingVoiceRecording}
                         className={`btn transition-all duration-300 flex items-center gap-2 ${
-                          isPlayingRecording 
+                          (isPlayingRecording && !existingVoiceRecording)
                             ? 'bg-transparent text-gray-400 border border-gray-600 cursor-not-allowed hover:bg-transparent'
                             : 'btn-outline'
                         }`}
@@ -793,9 +828,9 @@ const ChooseVoice = () => {
                 </button>
                 <button
                   onClick={handleVoiceSubmit}
-                  disabled={!audioBlob || isRecording || isUploadingVoice || isSaving}
+                  disabled={(!audioBlob && !existingVoiceRecording) || isRecording || isUploadingVoice || isSaving}
                   className={`flex-1 btn font-heading transition-all duration-300 ${
-                    audioBlob && !isRecording && !isUploadingVoice && !isSaving
+                    (audioBlob || existingVoiceRecording) && !isRecording && !isUploadingVoice && !isSaving
                       ? 'btn-primary' 
                       : 'bg-transparent text-gray-400 border border-gray-600 cursor-not-allowed hover:bg-transparent'
                   }`}
@@ -804,9 +839,9 @@ const ChooseVoice = () => {
                    isUploadingVoice || isSaving ? (
                      <>
                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                       Uploading...
+                       {existingVoiceRecording ? 'Processing...' : 'Uploading...'}
                      </>
-                   ) : 'Submit'}
+                   ) : existingVoiceRecording ? 'Continue' : 'Submit'}
                 </button>
               </div>
             </div>
