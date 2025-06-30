@@ -1,11 +1,19 @@
 import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { SignedIn, SignedOut, useUser, useAuth } from '@clerk/clerk-react';
 import { Check, Star, Zap, Crown } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { createAuthenticatedSupabaseClient } from '../lib/supabase';
 
 const Pricing = () => {
+  const navigate = useNavigate();
+  const { user } = useUser();
+  const { getToken } = useAuth();
   const [isScrolled, setIsScrolled] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<string>('starter');
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
+  const [isOnboardingComplete, setIsOnboardingComplete] = useState<boolean | null>(null);
+  const [isCheckingOnboarding, setIsCheckingOnboarding] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -16,6 +24,52 @@ const Pricing = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Check onboarding status for signed-in users
+  useEffect(() => {
+    const checkOnboardingStatus = async () => {
+      if (!user?.id) {
+        setIsOnboardingComplete(null);
+        return;
+      }
+
+      try {
+        setIsCheckingOnboarding(true);
+        console.log('🔄 Checking onboarding status for user:', user.id);
+        
+        const token = await getToken({ template: 'supabase' });
+        if (!token) {
+          console.warn('No Clerk token available for onboarding check');
+          setIsOnboardingComplete(null);
+          return;
+        }
+
+        const supabase = createAuthenticatedSupabaseClient(token);
+        const { data: userProfile, error } = await supabase
+          .from('user_profiles')
+          .select('onboarding_completed')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (error && error.code !== 'PGRST116') {
+          console.error('Error checking onboarding status:', error);
+          setIsOnboardingComplete(null);
+          return;
+        }
+
+        const onboardingCompleted = userProfile?.onboarding_completed ?? false;
+        console.log('✅ Onboarding status:', onboardingCompleted);
+        setIsOnboardingComplete(onboardingCompleted);
+      } catch (error) {
+        console.error('Error checking onboarding status:', error);
+        setIsOnboardingComplete(null);
+      } finally {
+        setIsCheckingOnboarding(false);
+      }
+    };
+
+    checkOnboardingStatus();
+  }, [user?.id, getToken]);
 
   const plans = {
     free: {
@@ -96,6 +150,34 @@ const Pricing = () => {
     
     // For annual billing, show "2 months FREE" instead of dollar savings
     return '2 months FREE';
+  };
+
+  const handleCtaClick = () => {
+    if (!user) {
+      // Not signed in - redirect to sign up
+      navigate('/waitlist');
+    } else if (isOnboardingComplete === false) {
+      // Signed in but onboarding not complete - redirect to dashboard (which will redirect to onboarding)
+      navigate('/dashboard');
+    } else if (isOnboardingComplete === true) {
+      // Signed in and onboarding complete - redirect to dashboard
+      navigate('/dashboard');
+    } else {
+      // Unknown state - default to waitlist
+      navigate('/waitlist');
+    }
+  };
+
+  const getCtaButtonText = () => {
+    if (!user) {
+      return 'Get Started Free';
+    } else if (isOnboardingComplete === false) {
+      return 'Finish Onboarding';
+    } else if (isOnboardingComplete === true) {
+      return 'Go to Dashboard';
+    } else {
+      return 'Get Started Free';
+    }
   };
 
   return (
@@ -381,8 +463,19 @@ const Pricing = () => {
           <p className="text-lg text-text-secondary mb-8 font-body max-w-2xl mx-auto">
             Join thousands of people who are already transforming their lives with personalized guidance from their future selves.
           </p>
-          <button className="btn btn-primary text-lg px-8 py-4 font-heading">
-            Get Started Free
+          <button 
+            onClick={handleCtaClick}
+            disabled={isCheckingOnboarding}
+            className="btn btn-primary text-lg px-8 py-4 font-heading"
+          >
+            {isCheckingOnboarding ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                Loading...
+              </>
+            ) : (
+              getCtaButtonText()
+            )}
           </button>
         </motion.div>
       </div>
