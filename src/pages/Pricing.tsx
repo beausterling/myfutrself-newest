@@ -26,7 +26,7 @@ const Pricing = () => {
       color: 'from-gray-500 to-gray-600',
       features: [
         'Basic goal tracking',
-        'Up to 3 goals',
+        'Unlimited goals',
         'Weekly check-ins',
         'Basic voice interactions',
         'Email support'
@@ -265,7 +265,7 @@ const Pricing = () => {
               )}
               <p className="text-white/70 font-body">
                 {selectedPlan === 'free' && 'Perfect for getting started with basic goal tracking'}
-                {selectedPlan === 'starter' && 'Ideal for serious goal achievers who want personalized coaching'}
+                {selectedPlan === 'starter' && 'Ideal for serious goal achievers who want personalized accountability'}
                 {selectedPlan === 'premium' && 'For power users who want the complete transformation experience'}
               </p>
             </div>
