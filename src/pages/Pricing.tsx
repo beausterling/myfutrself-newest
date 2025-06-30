@@ -235,10 +235,10 @@ const Pricing = () => {
           className="text-center mb-12"
         >
           <h2 className="text-3xl md:text-4xl font-bold mb-4 font-heading">
-            Simple, Transparent Pricing
+            Paid Plans
           </h2>
           <p className="text-lg text-text-secondary font-body">
-            Choose the plan that fits your transformation journey
+            <em>Coming Soon</em>
           </p>
         </motion.div>
 
