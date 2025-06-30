@@ -228,6 +228,26 @@ const Pricing = () => {
 
       {/* Compact Pricing Cards */}
       <div className="container mx-auto px-4 pt-8 pb-16">
+        {/* Coming Soon Notice for Paid Plans */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+          className="max-w-3xl mx-auto mb-8"
+        >
+          <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-6 text-center">
+            <div className="flex items-center justify-center gap-3 mb-3">
+              <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center">
+                <span className="text-white text-sm">✨</span>
+              </div>
+              <h3 className="text-xl font-bold text-purple-400 font-heading">Paid Plans Coming Soon</h3>
+            </div>
+            <p className="text-purple-300 font-body">
+              We're putting the finishing touches on our premium features. Start with our free plan today and be the first to know when paid tiers launch!
+            </p>
+          </div>
+        </motion.div>
+
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -255,12 +275,23 @@ const Pricing = () => {
                 selectedPlan === planKey 
                   ? 'border-primary-aqua shadow-lg shadow-primary-aqua/20' 
                   : 'border-white/10 hover:border-white/20'
-              } ${plan.popular ? 'ring-1 ring-primary-aqua/50' : ''}`}
+              } ${plan.popular ? 'ring-1 ring-primary-aqua/50' : ''} ${
+                planKey !== 'free' ? 'opacity-75' : ''
+              }`}
             >
               {plan.popular && (
                 <div className="absolute -top-2 left-1/2 transform -translate-x-1/2">
-                  <span className="bg-gradient-to-r from-primary-aqua to-primary-blue text-white px-2 py-1 rounded-full text-xs font-medium font-heading mb-2">
-                    Popular
+                  <span className="bg-gradient-to-r from-purple-500 to-purple-600 text-white px-2 py-1 rounded-full text-xs font-medium font-heading mb-2">
+                    Coming Soon
+                  </span>
+                </div>
+              )}
+              
+              {/* Coming Soon overlay for paid plans */}
+              {planKey !== 'free' && (
+                <div className="absolute top-2 right-2">
+                  <span className="bg-purple-500/20 text-purple-300 px-2 py-1 rounded-full text-xs font-medium">
+                    Coming Soon
                   </span>
                 </div>
               )}
@@ -302,7 +333,8 @@ const Pricing = () => {
                 billingCycle === 'monthly'
                   ? 'bg-gradient-to-r from-primary-aqua to-primary-blue text-white shadow-lg'
                   : 'text-white/70 hover:text-white'
-              }`}
+              } opacity-50 cursor-not-allowed`}
+              disabled
             >
               Monthly
             </button>
@@ -312,7 +344,8 @@ const Pricing = () => {
                 billingCycle === 'annual'
                   ? 'bg-gradient-to-r from-primary-aqua to-primary-blue text-white shadow-lg'
                   : 'text-white/70 hover:text-white'
-              }`}
+              } opacity-50 cursor-not-allowed`}
+              disabled
             >
               Annual
               <span className="absolute -top-3 -right-2 bg-purple-500 text-white text-xs px-2 py-0.5 rounded-full">
@@ -351,6 +384,7 @@ const Pricing = () => {
               {billingCycle === 'annual' && plans[selectedPlan as keyof typeof plans].monthlyPrice > 0 && (
                 <div className="text-white/60 text-sm mb-4">
                   Billed annually as ${plans[selectedPlan as keyof typeof plans].annualPrice}/year
+                  <span className="block text-purple-400 text-xs mt-1">(Available when paid plans launch)</span>
                 </div>
               )}
               <p className="text-white/70 font-body">
@@ -391,7 +425,7 @@ const Pricing = () => {
               {/* Coming Soon section - only show for paid plans */}
               {(selectedPlan === 'starter' || selectedPlan === 'premium') && (
                 <div className="mt-6 pt-6 border-t border-white/10">
-                  <h4 className="text-lg font-semibold font-heading text-center mb-4 text-purple-400">Coming Soon:</h4>
+                  <h4 className="text-lg font-semibold font-heading text-center mb-4 text-purple-400">Features Coming Soon:</h4>
                   <ul className="space-y-3">
                     <li className="flex items-start gap-3">
                       <div className="w-5 h-5 bg-purple-500 rounded-full flex items-center justify-center mt-0.5 flex-shrink-0">
@@ -421,10 +455,24 @@ const Pricing = () => {
             <div className="text-center">
               <button 
                 onClick={handleChoosePlan}
-                className="btn btn-primary text-lg px-8 py-4 font-heading w-full sm:w-auto"
+                className={`text-lg px-8 py-4 font-heading w-full sm:w-auto transition-all duration-300 rounded-xl border ${
+                  selectedPlan === 'free'
+                    ? 'btn btn-primary'
+                    : 'bg-purple-500/20 text-purple-300 border-purple-500/30 cursor-not-allowed opacity-75'
+                }`}
+                disabled={selectedPlan !== 'free'}
               >
-                {selectedPlan === 'free' ? 'Get Started Free' : `Choose ${plans[selectedPlan as keyof typeof plans].name}`}
+                {selectedPlan === 'free' 
+                  ? 'Get Started Free' 
+                  : `${plans[selectedPlan as keyof typeof plans].name} - Coming Soon`
+                }
               </button>
+              
+              {selectedPlan !== 'free' && (
+                <p className="text-purple-400 text-sm mt-3 font-body">
+                  Start with our free plan and upgrade when paid tiers launch
+                </p>
+              )}
             </div>
           </div>
         </motion.div>
@@ -448,28 +496,28 @@ const Pricing = () => {
             <div className="space-y-6">
               <div className="bg-white/5 backdrop-blur-lg rounded-xl border border-white/10 p-6">
                 <h3 className="text-lg font-semibold mb-3 font-heading">
-                  Can I change plans anytime?
+                  When will paid plans be available?
                 </h3>
                 <p className="text-white/80 font-body">
-                  Yes! You can upgrade or downgrade your plan at any time. Changes take effect immediately, and we'll prorate any billing differences.
+                  We're working hard to launch our premium features soon. Start with our free plan today and you'll be notified when paid tiers become available.
                 </p>
               </div>
 
               <div className="bg-white/5 backdrop-blur-lg rounded-xl border border-white/10 p-6">
                 <h3 className="text-lg font-semibold mb-3 font-heading">
-                  How does billing work?
+                  Can I change plans when they're available?
                 </h3>
                 <p className="text-white/80 font-body">
-                  You'll be charged monthly or annually based on your selected plan. All payments are processed securely through Stripe.
+                  Yes! Once paid plans launch, you'll be able to upgrade or downgrade at any time. Changes will take effect immediately with prorated billing.
                 </p>
               </div>
 
               <div className="bg-white/5 backdrop-blur-lg rounded-xl border border-white/10 p-6">
                 <h3 className="text-lg font-semibold mb-3 font-heading">
-                  What's the difference between monthly and annual billing?
+                  Will my free plan data be preserved?
                 </h3>
                 <p className="text-white/80 font-body">
-                 Annual billing gives you 2 months FREE. You can switch between billing cycles at any time.
+                  Absolutely! All your goals, progress, and settings will be preserved when you upgrade to a paid plan. Nothing will be lost.
                 </p>
               </div>
             </div>
@@ -477,28 +525,28 @@ const Pricing = () => {
             <div className="space-y-6">
               <div className="bg-white/5 backdrop-blur-lg rounded-xl border border-white/10 p-6">
                 <h3 className="text-lg font-semibold mb-3 font-heading">
-                  What payment methods do you accept?
+                  How will I know when paid plans launch?
                 </h3>
                 <p className="text-white/80 font-body">
-                  We accept all major credit cards, PayPal, and bank transfers. All payments are processed securely through Stripe.
+                  We'll notify all users via email and in-app notifications when premium features become available. You'll be among the first to know!
                 </p>
               </div>
 
               <div className="bg-white/5 backdrop-blur-lg rounded-xl border border-white/10 p-6">
                 <h3 className="text-lg font-semibold mb-3 font-heading">
-                  Can I cancel my subscription?
+                  What payment methods will you accept?
                 </h3>
                 <p className="text-white/80 font-body">
-                  Absolutely. You can cancel your subscription at any time from your account settings. You'll continue to have access until the end of your billing period.
+                  We'll accept all major credit cards, PayPal, and bank transfers. All payments will be processed securely through Stripe.
                 </p>
               </div>
 
               <div className="bg-white/5 backdrop-blur-lg rounded-xl border border-white/10 p-6">
                 <h3 className="text-lg font-semibold mb-3 font-heading">
-                  What if I'm not satisfied?
+                  Will there be a free trial for paid plans?
                 </h3>
                 <p className="text-white/80 font-body">
-                  You can cancel your subscription at any time. For annual subscriptions, we offer prorated refunds within 30 days of purchase.
+                  Yes! When paid plans launch, we'll offer free trials so you can experience all premium features before committing to a subscription.
                 </p>
               </div>
             </div>
@@ -515,10 +563,10 @@ const Pricing = () => {
           className="text-center bg-gradient-to-r from-primary-aqua/10 to-primary-blue/10 rounded-2xl border border-white/10 p-8 sm:p-12"
         >
           <h2 className="text-3xl md:text-4xl font-bold mb-4 font-heading">
-            Start Your Transformation Today
+           Begin Your Journey Today
           </h2>
           <p className="text-lg text-text-secondary mb-8 font-body max-w-2xl mx-auto">
-            Join thousands of people who are already transforming their lives with personalized guidance from their future selves.
+           Start with our free plan and experience the power of accountability from your future self. Premium features coming soon!
           </p>
           <button 
             onClick={handleCtaClick}
