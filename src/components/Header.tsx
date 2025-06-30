@@ -139,19 +139,9 @@ const Header = ({ theme, toggleTheme }: { theme: string; toggleTheme: () => void
                     signOut();
                     setIsMenuOpen(false);
                   }}
-                  className="w-full flex items-center gap-3 p-4 bg-red-500/10 rounded-xl border border-red-500/20 hover:bg-red-500/20 transition-colors"
+                  className="text-white border border-white rounded px-4 py-2 hover:bg-white/10 transition-colors"
                 >
-                  <div className="w-10 h-10 bg-gradient-to-r from-red-500 to-red-600 rounded-full flex items-center justify-center text-white">
-                    🚪
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-white font-medium font-heading">Sign Out</span>
-                    </div>
-                    <p className="text-white/60 text-sm font-body">
-                      Sign out of your account
-                    </p>
-                  </div>
+                  Sign Out
                 </button>
               </div>
               
