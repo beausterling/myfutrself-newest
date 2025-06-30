@@ -216,96 +216,7 @@ const Landing = () => {
               )}
             </motion.div>
 
-            <motion.div 
-              className="mt-16 text-center"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 1, duration: 0.8 }}
-            >
-              <div className="flex justify-center items-center gap-8 text-white/30">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4 text-primary-aqua" />
-                  <span className="text-caption font-body">Early Access</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4 text-primary-aqua" />
-                  <span className="text-caption font-body">Exclusive Updates</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4 text-primary-aqua" />
-                  <span className="text-caption font-body">Special Pricing</span>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        </div>
-
-        {/* Transformation Story Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1, delay: 0.8 }}
-          className="mt-20 max-w-4xl mx-auto"
-        >
-          <div className="bg-gradient-to-r from-white/5 to-white/10 backdrop-blur-xl rounded-3xl border border-white/20 p-8 md:p-12">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.8, delay: 1.0 }}
-              className="text-center"
-            >
-              <h2 className="text-2xl md:text-3xl font-bold mb-6 font-heading gradient-text">
-                The Science of Future Self Connection
-              </h2>
-              
-              <div className="grid md:grid-cols-3 gap-8 mb-8">
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 1.2 }}
-                  className="text-center"
-                >
-                  <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-primary-aqua/20 to-primary-blue/20 rounded-full flex items-center justify-center border border-primary-aqua/30">
-                    <span className="text-2xl">🧠</span>
-                  </div>
-                  <h3 className="text-lg font-semibold mb-3 font-heading text-white">Psychological Alignment</h3>
-                  <p className="text-white/70 text-sm font-body leading-relaxed">
-                    Research shows that visualizing your future self increases motivation by 73% and improves decision-making consistency.
-                  </p>
-                </motion.div>
-                
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 1.4 }}
-                  className="text-center"
-                >
-                  <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-primary-aqua/20 to-primary-blue/20 rounded-full flex items-center justify-center border border-primary-aqua/30">
-                    <span className="text-2xl">⚡</span>
-                  </div>
-                  <h3 className="text-lg font-semibold mb-3 font-heading text-white">Neural Rewiring</h3>
-                  <p className="text-white/70 text-sm font-body leading-relaxed">
-                    Regular conversations with your future self create new neural pathways that strengthen long-term thinking and goal persistence.
-                  </p>
-                </motion.div>
-                
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 1.6 }}
-                  className="text-center"
-                >
-                  <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-primary-aqua/20 to-primary-blue/20 rounded-full flex items-center justify-center border border-primary-aqua/30">
-                    <span className="text-2xl">🎯</span>
-                  </div>
-                  <h3 className="text-lg font-semibold mb-3 font-heading text-white">Identity Transformation</h3>
-                  <p className="text-white/70 text-sm font-body leading-relaxed">
-                    By embodying your future identity today, you naturally align your actions with who you're becoming, not who you've been.
-                  </p>
-                </motion.div>
-              </div>
-              
-              <motion.div
+           <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 1.8 }}
@@ -319,9 +230,6 @@ const Landing = () => {
                   — Dr. Hal Hershfield, UCLA Behavioral Scientist
                 </div>
               </motion.div>
-            </motion.div>
-          </div>
-        </motion.div>
 
         {/* Floating Elements - optimized with transform-gpu */}
         <div className="absolute top-20 left-10 w-20 h-20 rounded-full bg-primary-aqua/20 blur-xl transform-gpu" style={{ animation: 'float 6s ease-in-out infinite' }}></div>
