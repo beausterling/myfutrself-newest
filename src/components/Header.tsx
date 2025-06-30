@@ -131,18 +131,6 @@ const Header = ({ theme, toggleTheme }: { theme: string; toggleTheme: () => void
                 <button onClick={() => setIsMenuOpen(false)} className="p-2 hover:bg-white/10 rounded-lg">
                   <X className="w-5 h-5 text-white" />
                 </button>
-                
-                {/* Sign Out Button */}
-                <button
-                  onClick={() => {
-                    console.log('🔄 Signing out user');
-                    signOut();
-                    setIsMenuOpen(false);
-                  }}
-                  className="text-white border border-white rounded px-4 py-2 hover:bg-white/10 transition-colors"
-                >
-                  Sign Out
-                </button>
               </div>
               
               <SignedIn>
@@ -186,6 +174,18 @@ const Header = ({ theme, toggleTheme }: { theme: string; toggleTheme: () => void
                   </Link>
                   
                 </div>
+                
+                {/* Sign Out Button - Moved to bottom */}
+                <button
+                  onClick={() => {
+                    console.log('🔄 Signing out user');
+                    signOut();
+                    setIsMenuOpen(false);
+                  }}
+                  className="text-white border border-white rounded px-4 py-2 hover:bg-white/10 transition-colors mt-6"
+                >
+                  Sign Out
+                </button>
               </SignedIn>
               
               <SignedOut>
