@@ -63,14 +63,48 @@ const ClerkProviderWithNavigate = () => {
             color: 'rgb(255, 255, 255)',
             border: '1px solid rgba(255, 255, 255, 0.3)'
           },
-          footerActionLink: {
-            color: 'rgb(36, 210, 211)'
-          },
+          // Target all input field variations
           formFieldInputShowPasswordButton: {
             color: 'rgba(255, 255, 255, 0.7)'
           },
           formFieldLabel: {
             color: 'rgba(255, 255, 255, 0.9)'
+          },
+          // Additional input field selectors for comprehensive coverage
+          'input[type="text"]': {
+            backgroundColor: 'rgba(16, 26, 47, 0.8)',
+            border: '1px solid rgba(255, 255, 255, 0.3) !important',
+            color: 'rgb(255, 255, 255)'
+          },
+          'input[type="email"]': {
+            backgroundColor: 'rgba(16, 26, 47, 0.8)',
+            border: '1px solid rgba(255, 255, 255, 0.3) !important',
+            color: 'rgb(255, 255, 255)'
+          },
+          'input[type="password"]': {
+            backgroundColor: 'rgba(16, 26, 47, 0.8)',
+            border: '1px solid rgba(255, 255, 255, 0.3) !important',
+            color: 'rgb(255, 255, 255)'
+          },
+          'input[type="tel"]': {
+            backgroundColor: 'rgba(16, 26, 47, 0.8)',
+            border: '1px solid rgba(255, 255, 255, 0.3) !important',
+            color: 'rgb(255, 255, 255)'
+          },
+          // Target Clerk-specific input classes
+          'input[data-testid]': {
+            backgroundColor: 'rgba(16, 26, 47, 0.8)',
+            border: '1px solid rgba(255, 255, 255, 0.3) !important',
+            color: 'rgb(255, 255, 255)'
+          },
+          // Target all input elements within forms
+          'form input': {
+            backgroundColor: 'rgba(16, 26, 47, 0.8)',
+            border: '1px solid rgba(255, 255, 255, 0.3) !important',
+            color: 'rgb(255, 255, 255)'
+          },
+          footerActionLink: {
+            color: 'rgb(36, 210, 211)'
           },
           dividerLine: {
             backgroundColor: 'rgba(255, 255, 255, 0.3)'
