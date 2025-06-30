@@ -149,25 +149,21 @@ function extractUserIdFromJWT(authHeader: string | null, requestId: string): str
 async function validateTwilioSignature(
   authToken: string,
   signature: string,
-  originalUrl: string,
+  fullRequestUrl: string,
   params: Record<string, string>,
   requestId: string
 ): Promise<boolean> {
   try {
     logWithContext('INFO', 'Starting Twilio signature validation', requestId, {
-      originalUrl,
+      fullRequestUrl,
       paramsCount: Object.keys(params).length, 
       hasSignature: !!signature,
       signaturePreview: signature ? signature.substring(0, 20) + '...' : 'missing'
     });
 
-    // Extract the base URL without query parameters for signature validation
-    // Twilio signs the URL without the query parameters
-    const url = originalUrl.split('?')[0];
-    
     // Create the signature string according to Twilio's specification
     // Start with the full URL
-    let signatureString = url;
+    let signatureString = fullRequestUrl;
     
     // Sort parameters alphabetically and append them
     const sortedKeys = Object.keys(params).sort();
@@ -177,8 +173,7 @@ async function validateTwilioSignature(
     
     logWithContext('INFO', 'Generated signature string for validation', requestId, {
       signatureStringLength: signatureString.length,
-      baseUrl: url,
-      originalUrl: originalUrl,
+      fullRequestUrl,
       paramKeys: sortedKeys,
       signatureStringPreview: signatureString.substring(0, 150) + '...'
     });
@@ -209,7 +204,7 @@ async function validateTwilioSignature(
     
     logWithContext('INFO', 'Signature validation completed', requestId, {
       isValid,
-      computedSignature,
+      computedSignature: computedSignature.substring(0, 20) + '...',
       providedSignature: signature || 'missing',
       authTokenLength: authToken.length
     });
@@ -424,7 +419,7 @@ function generateTwiML(audioUrl: string, webhookUrl: string, userId: string): st
 async function initiateCall(
   toNumber: string,
   fromNumber: string,
-  supabaseUrl: string,
+  webhookBaseUrl: string,
   userId: string,
   twilioAccountSid: string,
   twilioAuthToken: string,
@@ -442,7 +437,7 @@ async function initiateCall(
 
     // Construct the webhook URL using the Supabase URL
     // This ensures the x-deno-subhost header will be set correctly
-    const webhookUrl = `${supabaseUrl}/functions/v1/twilio-call-handler/twiml-webhook?user_id=${userId}`;
+    const webhookUrl = `${webhookBaseUrl}/functions/v1/twilio-call-handler/twiml-webhook?user_id=${userId}`;
     
     logWithContext('INFO', 'Using webhook URL for Twilio', requestId, { 
       webhookUrl,
@@ -549,7 +544,7 @@ Deno.serve(async (req) => {
       const callSid = await initiateCall(
         requestBody.to_phone_number,
         twilioFromNumber,
-        supabaseUrl,
+        supabaseUrl, // Pass the base URL for constructing the webhook URL
         requestBody.user_id,
         twilioAccountSid,
         twilioAuthToken,
@@ -593,21 +588,16 @@ Deno.serve(async (req) => {
       // CRITICAL FIX: Use the original URL that Twilio called directly
       // This is the most reliable way to ensure the URL matches what Twilio signed
       const fullUrl = req.url;
-
-      logWithContext('INFO', 'Reconstructed URL for signature validation', requestId, {
-        originalHost: regularHost,
-        forwardedHost: forwardedHost,
-        selectedHost: host,
-        fullUrl: fullUrl,
-        rawBodyLength: rawBody.length,
-        paramsCount: Object.keys(params).length,
-        signaturePresent: !!twilioSignature
+      
+      logWithContext('INFO', 'Using full request URL for signature validation', requestId, {
+        fullUrl,
+        twilioSignaturePresent: !!twilioSignature
       });
 
       // Validate Twilio signature using our custom implementation
       const isValidSignature = await validateTwilioSignature(
         twilioAuthToken,
-        twilioSignature || '',
+        twilioSignature || '', 
         fullUrl,
         params,
         requestId
@@ -675,8 +665,14 @@ Deno.serve(async (req) => {
       const audioUrl = await generateSpeech(aiResponseText, voicePreference, supabaseUrl, supabaseAnonKey, requestId);
 
       // Generate TwiML response with the correct webhook URL
-      const webhookUrl = `${supabaseUrl}/functions/v1/twilio-call-handler/twiml-webhook`;
-      const twimlResponse = generateTwiML(audioUrl, webhookUrl, userId);
+      // Include the full URL with the host to ensure proper routing
+      const fullWebhookUrl = `${req.url.split('?')[0]}?user_id=${userId}`;
+      const twimlResponse = generateTwiML(audioUrl, fullWebhookUrl, userId);
+      
+      logWithContext('INFO', 'Using full webhook URL in TwiML response', requestId, {
+        fullWebhookUrl,
+        audioUrl
+      });
 
       logWithContext('INFO', 'TwiML response generated successfully', requestId, {
         twimlLength: twimlResponse.length,
