@@ -576,11 +576,32 @@ Deno.serve(async (req) => {
       const rawBody = await req.text();
       const params = Object.fromEntries(new URLSearchParams(rawBody));
 
-      // Get full request URL for signature validation
-      const fullUrl = `${url.protocol}//${url.host}${url.pathname}${url.search}`;
+      // Reconstruct the exact URL that Twilio signed
+      // CRITICAL: Use x-forwarded-proto and x-forwarded-host headers
+      const forwardedProto = req.headers.get('x-forwarded-proto') || 'https';
+      const forwardedHost = req.headers.get('x-forwarded-host') || req.headers.get('host');
+      
+      if (!forwardedHost) {
+        logWithContext('ERROR', 'Missing host headers for URL reconstruction', requestId, {
+          headers: Object.fromEntries(req.headers.entries())
+        });
+        return new Response('Missing host header', { 
+          status: 400,
+          headers: { 'Content-Type': 'text/plain' }
+        });
+      }
+      
+      const { pathname, search } = new URL(req.url);
+      const fullUrl = `${forwardedProto}://${forwardedHost}${pathname}${search}`;
 
       logWithContext('INFO', 'Using full request URL for signature validation', requestId, {
         fullUrl,
+        forwardedProto,
+        forwardedHost,
+        pathname,
+        search,
+        rawBodyLength: rawBody.length,
+        paramsCount: Object.keys(params).length,
         twilioSignaturePresent: !!twilioSignature
       });
 
@@ -655,8 +676,8 @@ Deno.serve(async (req) => {
       const audioUrl = await generateSpeech(aiResponseText, voicePreference, supabaseUrl, supabaseAnonKey, requestId);
 
       // Generate TwiML response with the correct webhook URL
-      // Include the full URL with the host to ensure proper routing
-      const fullWebhookUrl = `${req.url.split('?')[0]}?user_id=${userId}`;
+      // Use the same URL construction method for consistency
+      const fullWebhookUrl = `${forwardedProto}://${forwardedHost}${pathname}?user_id=${userId}`;
       const twimlResponse = generateTwiML(audioUrl, fullWebhookUrl, userId);
       
       logWithContext('INFO', 'Using full webhook URL in TwiML response', requestId, {
