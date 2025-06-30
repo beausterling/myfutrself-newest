@@ -561,9 +561,13 @@ Deno.serve(async (req) => {
       const params = Object.fromEntries(new URLSearchParams(rawBody));
 
       // Reconstruct the exact HTTPS URL that Twilio called
-      const host = req.headers.get('host');
+      // Use x-forwarded-host to get the original domain, fallback to host
+      const host = req.headers.get('x-forwarded-host') || req.headers.get('host');
       if (!host) {
-        logWithContext('ERROR', 'Missing host header for URL reconstruction', requestId);
+        logWithContext('ERROR', 'Missing host/x-forwarded-host headers for URL reconstruction', requestId, {
+          host: req.headers.get('host'),
+          forwardedHost: req.headers.get('x-forwarded-host')
+        });
         return new Response('Missing host header', { 
           status: 400,
           headers: { 'Content-Type': 'text/plain' }
@@ -575,6 +579,9 @@ Deno.serve(async (req) => {
 
       logWithContext('INFO', 'Validating Twilio signature', requestId, {
         url: fullUrl,
+        originalHost: req.headers.get('host'),
+        forwardedHost: req.headers.get('x-forwarded-host'),
+        usingHost: host,
         hasSignature: !!twilioSignature,
         paramsCount: Object.keys(params).length
       });
