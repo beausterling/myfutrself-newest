@@ -125,29 +125,6 @@ function validateEnvironment(requestId: string): {
   return { supabaseUrl, supabaseServiceKey, supabaseAnonKey, twilioAccountSid, twilioAuthToken, twilioFromNumber };
 }
 
-// Extract user ID from Clerk JWT
-function extractUserIdFromJWT(authHeader: string | null, requestId: string): string {
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    throw new Error('Missing or invalid authorization header');
-  }
-
-  try {
-    const token = authHeader.substring(7);
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    const userId = payload.sub;
-    
-    if (!userId) {
-      throw new Error('No user ID found in JWT');
-    }
-    
-    logWithContext('INFO', 'User ID extracted from JWT', requestId, { userId });
-    return userId;
-  } catch (error) {
-    logWithContext('ERROR', 'Failed to extract user ID from JWT', requestId, { error: error instanceof Error ? error.message : String(error) });
-    throw new Error('Invalid JWT token');
-  }
-}
-
 // Get user's voice preference from database
 async function getUserVoicePreference(
   supabase: any,
@@ -444,12 +421,8 @@ serve(async (req) => {
 
     // Route handling
     if (pathname.endsWith('/initiate-call')) {
-      // Handle call initiation - requires JWT authentication
+      // Handle call initiation
       logWithContext('INFO', 'Processing call initiation request', requestId);
-
-      // Extract user ID from JWT
-      const authHeader = req.headers.get('authorization');
-      const userId = extractUserIdFromJWT(authHeader, requestId);
 
       // Parse request body
       const requestBody: InitiateCallRequest = await req.json();
@@ -458,14 +431,9 @@ serve(async (req) => {
         return createErrorResponse('Missing required fields: user_id and to_phone_number', requestId, 400);
       }
 
-      // Verify the requesting user matches the user_id in the request
-      if (userId !== requestBody.user_id) {
-        logWithContext('ERROR', 'User ID mismatch', requestId, { 
-          jwtUserId: userId, 
-          requestUserId: requestBody.user_id 
-        });
-        return createErrorResponse('Unauthorized: User ID mismatch', requestId, 403);
-      }
+      const userId = requestBody.user_id;
+      
+      logWithContext('INFO', 'Processing call initiation for user', requestId, { userId });
 
       // Construct webhook URL for TwiML responses
       const webhookUrl = `${supabaseUrl}/functions/v1/twilio-call-handler/twiml-webhook`;
@@ -475,7 +443,7 @@ serve(async (req) => {
         requestBody.to_phone_number,
         twilioFromNumber,
         webhookUrl,
-        requestBody.user_id,
+        userId,
         twilioAccountSid,
         twilioAuthToken,
         requestId
