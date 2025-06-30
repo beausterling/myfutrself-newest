@@ -1,4 +1,3 @@
-```tsx
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth, useUser } from '@clerk/clerk-react';
 import {
@@ -523,4 +522,3 @@ const Landing = () => {
 };
 
 export default Landing;
-```
