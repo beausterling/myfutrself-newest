@@ -1,5 +1,7 @@
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { validateRequest } from 'https://esm.sh/twilio@5.3.4'
+import { VoiceResponse } from 'https://esm.sh/twilio@5.3.4/lib/twiml/VoiceResponse'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,16 +12,6 @@ const corsHeaders = {
 interface InitiateCallRequest {
   user_id: string;
   to_phone_number: string;
-}
-
-interface TwilioWebhookRequest {
-  CallSid?: string;
-  From?: string;
-  To?: string;
-  CallStatus?: string;
-  SpeechResult?: string;
-  Confidence?: string;
-  user_id?: string;
 }
 
 interface ErrorResponse {
@@ -152,70 +144,6 @@ function extractUserIdFromJWT(authHeader: string | null, requestId: string): str
   } catch (error) {
     logWithContext('ERROR', 'Failed to extract user ID from JWT', requestId, { error: error instanceof Error ? error.message : String(error) });
     throw new Error('Invalid JWT token');
-  }
-}
-
-// Validate Twilio signature using HMAC-SHA1
-async function validateTwilioSignature(
-  authToken: string,
-  signature: string,
-  url: string,
-  params: Record<string, string>,
-  requestId: string
-): Promise<boolean> {
-  logWithContext('INFO', 'Validating Twilio signature', requestId, { 
-    url,
-    hasSignature: !!signature,
-    paramsCount: Object.keys(params).length 
-  });
-
-  try {
-    // Create the data string that Twilio signed
-    let data = url;
-    
-    // Sort parameters by key and append to URL
-    const sortedKeys = Object.keys(params).sort();
-    for (const key of sortedKeys) {
-      data += key + params[key];
-    }
-
-    logWithContext('INFO', 'Constructed data string for signature validation', requestId, { 
-      dataLength: data.length,
-      sortedKeysCount: sortedKeys.length 
-    });
-
-    // Create HMAC-SHA1 signature
-    const encoder = new TextEncoder();
-    const keyData = encoder.encode(authToken);
-    const messageData = encoder.encode(data);
-
-    const cryptoKey = await crypto.subtle.importKey(
-      'raw',
-      keyData,
-      { name: 'HMAC', hash: 'SHA-1' },
-      false,
-      ['sign']
-    );
-
-    const signatureBuffer = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
-    const computedSignature = btoa(String.fromCharCode(...new Uint8Array(signatureBuffer)));
-
-    const isValid = computedSignature === signature;
-
-    logWithContext(isValid ? 'INFO' : 'WARN', 'Twilio signature validation result', requestId, {
-      isValid,
-      providedSignatureLength: signature.length,
-      computedSignatureLength: computedSignature.length,
-      signaturesMatch: computedSignature === signature
-    });
-
-    return isValid;
-
-  } catch (error) {
-    logWithContext('ERROR', 'Error during Twilio signature validation', requestId, {
-      error: error instanceof Error ? error.message : String(error)
-    });
-    return false;
   }
 }
 
@@ -401,17 +329,28 @@ async function generateSpeech(
   }
 }
 
-// Generate TwiML response
+// Generate TwiML response using Twilio VoiceResponse
 function generateTwiML(audioUrl: string, webhookUrl: string, userId: string): string {
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-    <Play>${audioUrl}</Play>
-    <Gather input="speech" timeout="10" speechTimeout="auto" action="${webhookUrl}?user_id=${userId}" method="POST">
-        <Say voice="alice">Please respond when you're ready.</Say>
-    </Gather>
-    <Say voice="alice">I didn't hear a response. Have a great day!</Say>
-    <Hangup/>
-</Response>`;
+  const twiml = new VoiceResponse();
+  
+  // Play the AI-generated audio
+  twiml.play({}, audioUrl);
+  
+  // Gather speech input from the user
+  const gather = twiml.gather({
+    input: 'speech',
+    timeout: 10,
+    speechTimeout: 'auto',
+    action: `${webhookUrl}?user_id=${userId}`,
+    method: 'POST'
+  });
+  gather.say({ voice: 'alice' }, 'Please respond when you\'re ready.');
+  
+  // Fallback if no response
+  twiml.say({ voice: 'alice' }, 'I didn\'t hear a response. Have a great day!');
+  twiml.hangup();
+  
+  return twiml.toString();
 }
 
 // Initiate outbound call using Twilio
@@ -548,8 +487,24 @@ serve(async (req) => {
       // Handle TwiML webhook requests from Twilio - requires signature validation
       logWithContext('INFO', 'Processing TwiML webhook request', requestId);
 
+      // Get the raw body as text for signature validation
+      const rawBody = await req.text();
+      
+      // Reconstruct the exact HTTPS URL Twilio called
+      const host = req.headers.get('x-forwarded-host') || req.headers.get('host');
+      if (!host) {
+        logWithContext('ERROR', 'Missing host header for URL reconstruction', requestId);
+        return new Response('Missing host header', { 
+          status: 400,
+          headers: { 'Content-Type': 'text/plain' }
+        });
+      }
+      
+      const path = new URL(req.url).pathname + new URL(req.url).search;
+      const fullUrl = `https://${host}${path}`;
+
       // Get Twilio signature from headers
-      const twilioSignature = req.headers.get('x-twilio-signature');
+      const twilioSignature = req.headers.get('x-twilio-signature') || '';
       if (!twilioSignature) {
         logWithContext('ERROR', 'Missing Twilio signature header', requestId);
         return new Response('Missing Twilio signature', { 
@@ -558,40 +513,21 @@ serve(async (req) => {
         });
       }
 
-      // Parse form data from Twilio
-      const formData = await req.formData();
-      const webhookData: TwilioWebhookRequest = {};
-      const params: Record<string, string> = {};
-      
-      for (const [key, value] of formData.entries()) {
-        const stringValue = value as string;
-        webhookData[key as keyof TwilioWebhookRequest] = stringValue;
-        params[key] = stringValue;
-      }
+      // Parse the raw URL-encoded body into a params object
+      const params = Object.fromEntries(new URLSearchParams(rawBody));
 
-      // Get user_id from query parameters and add to params for signature validation
-      const userId = url.searchParams.get('user_id');
-      if (!userId) {
-        logWithContext('ERROR', 'Missing user_id in webhook request', requestId);
-        return new Response('Missing user_id parameter', { 
-          status: 400,
-          headers: { 'Content-Type': 'text/plain' }
-        });
-      }
+      logWithContext('INFO', 'Validating Twilio signature', requestId, {
+        url: fullUrl,
+        hasSignature: !!twilioSignature,
+        paramsCount: Object.keys(params).length
+      });
 
-      // Add query parameters to params for signature validation
-      for (const [key, value] of url.searchParams.entries()) {
-        params[key] = value;
-      }
-
-      // Validate Twilio signature
-      const fullUrl = req.url; // Use the full URL including query parameters
-      const isValidSignature = await validateTwilioSignature(
+      // Validate Twilio signature using the official library
+      const isValidSignature = validateRequest(
         twilioAuthToken,
         twilioSignature,
         fullUrl,
-        params,
-        requestId
+        params
       );
 
       if (!isValidSignature) {
@@ -608,22 +544,32 @@ serve(async (req) => {
 
       logWithContext('INFO', 'Twilio signature validated successfully', requestId);
 
+      // Extract user_id from query parameters
+      const userId = url.searchParams.get('user_id');
+      if (!userId) {
+        logWithContext('ERROR', 'Missing user_id in webhook request', requestId);
+        return new Response('Missing user_id parameter', { 
+          status: 400,
+          headers: { 'Content-Type': 'text/plain' }
+        });
+      }
+
       logWithContext('INFO', 'TwiML webhook data received', requestId, {
-        callSid: webhookData.CallSid,
-        callStatus: webhookData.CallStatus,
-        hasSpeechResult: !!webhookData.SpeechResult,
+        callSid: params.CallSid,
+        callStatus: params.CallStatus,
+        hasSpeechResult: !!params.SpeechResult,
         userId
       });
 
       let aiResponseText: string;
       let context: string;
 
-      if (webhookData.SpeechResult) {
+      if (params.SpeechResult) {
         // User has spoken - this is a follow-up interaction
-        context = `The user just said: "${webhookData.SpeechResult}". Please respond appropriately and continue the conversation about their goals.`;
+        context = `The user just said: "${params.SpeechResult}". Please respond appropriately and continue the conversation about their goals.`;
         logWithContext('INFO', 'Processing user speech input', requestId, { 
-          speechResult: webhookData.SpeechResult,
-          confidence: webhookData.Confidence 
+          speechResult: params.SpeechResult,
+          confidence: params.Confidence 
         });
       } else {
         // Initial call - generate greeting
