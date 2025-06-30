@@ -487,13 +487,13 @@ const TwilioSetup = () => {
 
             <button
               onClick={handleStartTestCall}
-              disabled={true}
+              disabled={isTestingCall}
               className={`btn w-full text-lg py-4 font-heading transition-all duration-300 opacity-30 cursor-not-allowed ${
                 testCallCompleted
                   ? 'bg-green-500/20 text-green-400 border-green-500/30 cursor-not-allowed'
                   : isTestingCall
                   ? 'bg-white/10 text-white/40 cursor-not-allowed'
-                  : 'bg-gray-500/20 text-gray-400 border-gray-500/30'
+                  : 'btn-primary'
               }`}
             >
               <div className="flex items-center justify-center gap-3">
@@ -502,11 +502,6 @@ const TwilioSetup = () => {
               </div>
             </button>
             
-            <div className="text-center mt-4">
-              <p className="text-red-400 text-sm font-body">
-                Phone calls are currently unavailable
-              </p>
-            </div>
           </div>
 
           {/* In-App Voice Chat Card */}
