@@ -258,9 +258,26 @@ const Landing = () => {
             </div>
           </motion.div>
         </div>
-            </p>
-          </motion.div>
+       </section>
 
+       {/* Features Section */}
+       <section className="py-20">
+         <div className="container mx-auto px-4">
+           <motion.div 
+             className="text-center mb-16"
+             initial={{ opacity: 0, y: 30 }}
+             whileInView={{ opacity: 1, y: 0 }}
+             transition={{ duration: 0.8 }}
+             viewport={{ once: true, margin: "-100px" }}
+           >
+             <h2 className="font-heading font-bold mb-6">
+               How It <span className="gradient-text">Works</span>
+             </h2>
+             <p className="text-body-large text-white/70 max-w-2xl mx-auto font-body">
+               A complete system designed to help you become the person you want to be.
+             </p>
+           </motion.div>
+ 
           <motion.div 
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto"
             variants={staggerContainer}
