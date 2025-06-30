@@ -15,6 +15,7 @@ const TwilioSetup = () => {
   const [testCallStatus, setTestCallStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [aiMessage, setAiMessage] = useState<string | null>(null);
 
   // Handle scroll effect for blur
   useEffect(() => {
@@ -30,20 +31,75 @@ const TwilioSetup = () => {
   const handleTestCall = async () => {
     setIsTestingCall(true);
     setTestCallStatus('idle');
+    setError(null);
+    setAiMessage(null);
     
     try {
-      // Simulate test call - replace with actual Twilio integration later
-      console.log('🔄 Testing phone call functionality...');
+      console.log('🔄 Starting AI chat completion test...');
       
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      if (!user?.id) {
+        throw new Error('User authentication required');
+      }
+
+      // Get authentication token
+      const token = await getToken({ template: 'supabase' });
+      if (!token) {
+        throw new Error('No authentication token available');
+      }
+
+      // Construct Edge Function URL
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      if (!supabaseUrl) {
+        throw new Error('Supabase URL not found in environment variables');
+      }
+
+      const edgeFunctionUrl = `${supabaseUrl}/functions/v1/openai-chat-completion`;
+      console.log('🔗 Edge Function URL:', edgeFunctionUrl);
+
+      // Prepare request body
+      const requestBody = {
+        user_id: user.id,
+        context: 'This is a test call to verify that your future self can successfully reach you and provide personalized guidance based on your goals.'
+      };
+
+      console.log('📤 Sending chat completion request:', requestBody);
+
+      // Make request to Edge Function
+      const response = await fetch(edgeFunctionUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('❌ Edge Function error:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData
+        });
+        throw new Error(errorData.error || `AI chat completion failed: ${response.status} ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ AI chat completion successful:', result);
+
+      if (!result.success) {
+        throw new Error(result.error || 'AI chat completion failed');
+      }
+
+      console.log('🎯 AI message generated:', result.message);
+      setAiMessage(result.message);
       
-      // For now, simulate success
       setTestCallStatus('success');
-      console.log('✅ Test call completed successfully');
+      console.log('✅ Test call simulation completed successfully');
       
     } catch (error) {
       console.error('❌ Test call failed:', error);
+      setError(error instanceof Error ? error.message : 'Test call failed. Please try again.');
       setTestCallStatus('error');
     } finally {
       setIsTestingCall(false);
@@ -203,8 +259,15 @@ const TwilioSetup = () => {
                   <div>
                     <p className="text-green-400 font-medium font-heading">Test Call Successful!</p>
                     <p className="text-green-300 text-sm mt-1 font-body">
-                      Your phone connection is working perfectly. You're ready to receive calls from your future self.
+                      Your future self is ready to guide you. Here's what they would say:
                     </p>
+                    {aiMessage && (
+                      <div className="mt-3 p-3 bg-green-500/5 border border-green-500/10 rounded-lg">
+                        <p className="text-green-200 italic font-body">
+                          "{aiMessage}"
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -217,7 +280,7 @@ const TwilioSetup = () => {
                   <div>
                     <p className="text-red-400 font-medium font-heading">Test Call Failed</p>
                     <p className="text-red-300 text-sm mt-1 font-body">
-                      There was an issue with the test call. Please try again or contact support if the problem persists.
+                      {error || 'There was an issue with the test call. Please try again or contact support if the problem persists.'}
                     </p>
                   </div>
                 </div>
@@ -246,7 +309,7 @@ const TwilioSetup = () => {
                 <>
                   <div className="flex items-center justify-center gap-3">
                     <CheckCircle className="w-5 h-5" />
-                    <span>Test Completed Successfully</span>
+                    <span>Test Completed</span>
                   </div>
                 </>
               ) : (
@@ -266,19 +329,19 @@ const TwilioSetup = () => {
             <ul className="space-y-3 text-sm font-body text-white/80">
               <li className="flex items-start gap-3">
                 <div className="w-2 h-2 bg-primary-aqua rounded-full mt-2 flex-shrink-0"></div>
-                <span>You'll receive a brief call from your assigned number</span>
+                <span>Your future self will analyze your current goals and progress</span>
               </li>
               <li className="flex items-start gap-3">
                 <div className="w-2 h-2 bg-primary-aqua rounded-full mt-2 flex-shrink-0"></div>
-                <span>The call will last about 10 seconds to verify connectivity</span>
+                <span>They'll generate a personalized message based on your motivations and obstacles</span>
               </li>
               <li className="flex items-start gap-3">
                 <div className="w-2 h-2 bg-primary-aqua rounded-full mt-2 flex-shrink-0"></div>
-                <span>You'll hear a brief message confirming the setup is complete</span>
+                <span>You'll see exactly what they would say during a real call</span>
               </li>
               <li className="flex items-start gap-3">
                 <div className="w-2 h-2 bg-primary-aqua rounded-full mt-2 flex-shrink-0"></div>
-                <span>No action is required from you during the test</span>
+                <span>This verifies that the AI system understands your goals and can provide relevant guidance</span>
               </li>
             </ul>
           </div>
