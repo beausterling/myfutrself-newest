@@ -181,6 +181,14 @@ const Pricing = () => {
     // For all plans, direct to dashboard or onboarding
     handleCtaClick();
   };
+
+  // Check if the button text matches the actual onboarding status
+  useEffect(() => {
+    if (user && isOnboardingComplete === false) {
+      console.log('🔄 User has incomplete onboarding, button should say "Finish Onboarding"');
+    }
+  }, [user, isOnboardingComplete]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-bg-primary via-bg-secondary to-bg-primary">
       {/* Hero Section */}
@@ -422,7 +430,7 @@ const Pricing = () => {
                   onClick={handleChoosePlan}
                   className="btn btn-primary text-lg px-8 py-4 font-heading w-full sm:w-auto"
                 >
-                  {selectedPlan === 'free' ? getCtaButtonText() : 'Dashboard'}
+                  {getCtaButtonText()}
                 </button>
               </SignedIn>
               <SignedOut>
@@ -437,7 +445,7 @@ const Pricing = () => {
                     onClick={() => navigate('/dashboard')}
                     className="btn btn-primary text-lg px-8 py-4 font-heading w-full sm:w-auto"
                   >
-                    Get Started Free
+                    {selectedPlan === 'free' ? 'Get Started Free' : `Choose ${plans[selectedPlan as keyof typeof plans].name}`}
                   </button>
                 )}
               </SignedOut>
