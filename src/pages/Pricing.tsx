@@ -79,11 +79,10 @@ const Pricing = () => {
       icon: <Star className="w-6 h-6" />,
       color: 'from-gray-500 to-gray-600',
       features: [
-        'Basic goal tracking',
         'Unlimited goals',
         'Weekly check-ins',
-        'Basic voice interactions',
-        'Email support'
+        'Instant voice clone',
+        'Limited FutrSelf chat'
       ]
     },
     starter: {
@@ -96,10 +95,9 @@ const Pricing = () => {
       popular: true,
       features: [
         'Everything in Free',
-        'Unlimited goals',
         'Daily check-ins',
-        'Custom voice creation',
-        'Advanced scheduling',
+        'Dedicated phone number',
+        'Professional voice clone',
         'Priority support',
         'Progress analytics'
       ]
@@ -113,12 +111,9 @@ const Pricing = () => {
       color: 'from-purple-500 to-purple-600',
       features: [
         'Everything in Starter',
-        'AI-powered insights',
-        'Custom coaching sessions',
-        'Advanced future self visualization',
-        'Team collaboration features',
-        'White-label options',
-        'Dedicated account manager'
+        'More FutrSelf minutes',
+        'More FutrSelf messages',
+        'Advanced future self visualization'
       ]
     }
   };
