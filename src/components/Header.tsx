@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { SignedIn, SignedOut, UserButton, useUser, useAuth, useClerk } from '@clerk/clerk-react';
-import { Menu, X, Settings } from 'lucide-react';
+import { Menu, X, Settings, DollarSign } from 'lucide-react';
 import { createAuthenticatedSupabaseClient } from '../lib/supabase';
 
 const Header = ({ theme, toggleTheme }: { theme: string; toggleTheme: () => void }) => {
@@ -150,8 +150,8 @@ const Header = ({ theme, toggleTheme }: { theme: string; toggleTheme: () => void
                   </div>
 
                   <div className="flex items-center gap-3 p-4 bg-white/5 rounded-xl border border-white/10">
-                    <div className="w-10 h-10 bg-gradient-to-r from-primary-aqua to-primary-blue rounded-full flex items-center justify-center text-white font-bold text-lg">
-                      💰
+                    <div className="w-10 h-10 bg-gradient-to-r from-primary-aqua to-primary-blue rounded-full flex items-center justify-center text-white">
+                      <DollarSign className="w-5 h-5" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
@@ -224,8 +224,8 @@ const Header = ({ theme, toggleTheme }: { theme: string; toggleTheme: () => void
                     onClick={() => setIsMenuOpen(false)}
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gradient-to-r from-primary-aqua to-primary-blue rounded-full flex items-center justify-center text-white font-bold text-lg">
-                        💰
+                      <div className="w-10 h-10 bg-gradient-to-r from-primary-aqua to-primary-blue rounded-full flex items-center justify-center text-white">
+                        <DollarSign className="w-5 h-5" />
                       </div>
                       <div>
                         <div className="text-white font-medium font-heading">Pricing</div>
