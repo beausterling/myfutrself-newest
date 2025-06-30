@@ -178,18 +178,8 @@ const Pricing = () => {
   const handleChoosePlan = () => {
     console.log('🎯 Plan selection:', selectedPlan, 'Billing:', billingCycle);
     
-    if (selectedPlan === 'free') {
-      // For free plan, handle based on auth status
-      if (user) {
-        handleCtaClick();
-      }
-      // If not signed in, the SignUpButton will handle it
-    } else {
-      // For paid plans (starter/premium), redirect to checkout
-      const checkoutUrl = `/checkout?plan=${selectedPlan}&billing=${billingCycle}`;
-      console.log('🔄 Redirecting to checkout:', checkoutUrl);
-      navigate(checkoutUrl);
-    }
+    // For all plans, direct to dashboard or onboarding
+    handleCtaClick();
   };
   return (
     <div className="min-h-screen bg-gradient-to-br from-bg-primary via-bg-secondary to-bg-primary">
@@ -432,7 +422,7 @@ const Pricing = () => {
                   onClick={handleChoosePlan}
                   className="btn btn-primary text-lg px-8 py-4 font-heading w-full sm:w-auto"
                 >
-                  {selectedPlan === 'free' ? 'Get Started Free' : `Choose ${plans[selectedPlan as keyof typeof plans].name}`}
+                  {selectedPlan === 'free' ? getCtaButtonText() : 'Dashboard'}
                 </button>
               </SignedIn>
               <SignedOut>
@@ -444,10 +434,10 @@ const Pricing = () => {
                   </SignUpButton>
                 ) : (
                   <button 
-                    onClick={handleChoosePlan}
+                    onClick={() => navigate('/dashboard')}
                     className="btn btn-primary text-lg px-8 py-4 font-heading w-full sm:w-auto"
                   >
-                    Choose {plans[selectedPlan as keyof typeof plans].name}
+                    Get Started Free
                   </button>
                 )}
               </SignedOut>
