@@ -103,7 +103,7 @@ function validateEnvironment(requestId: string): {
   
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+  const supabaseAnonKey = Deno.env.get('VITE_SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_ANON_KEY');
   const twilioAccountSid = Deno.env.get('TWILIO_ACCOUNT_SID');
   const twilioAuthToken = Deno.env.get('TWILIO_AUTH_TOKEN');
   const twilioFromNumber = Deno.env.get('TWILIO_FROM_NUMBER');
@@ -111,7 +111,7 @@ function validateEnvironment(requestId: string): {
   const missing = [];
   if (!supabaseUrl) missing.push('SUPABASE_URL');
   if (!supabaseServiceKey) missing.push('SUPABASE_SERVICE_ROLE_KEY');
-  if (!supabaseAnonKey) missing.push('SUPABASE_ANON_KEY');
+  if (!supabaseAnonKey) missing.push('VITE_SUPABASE_ANON_KEY or SUPABASE_ANON_KEY');
   if (!twilioAccountSid) missing.push('TWILIO_ACCOUNT_SID');
   if (!twilioAuthToken) missing.push('TWILIO_AUTH_TOKEN');
   if (!twilioFromNumber) missing.push('TWILIO_FROM_NUMBER');
