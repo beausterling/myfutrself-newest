@@ -580,12 +580,7 @@ serve(async (req) => {
         });
       }
 
-      // Add query parameters to params for signature validation
-      for (const [key, value] of url.searchParams.entries()) {
-        params[key] = value;
-      }
-
-      // Reconstruct the exact HTTPS URL that Twilio used to sign the request
+      // Reconstruct the exact HTTPS URL that Twilio used to sign the request (including query parameters)
       const host = req.headers.get('x-forwarded-host') || req.headers.get('host');
       if (!host) {
         logWithContext('ERROR', 'Missing host header for URL reconstruction', requestId);
@@ -595,14 +590,14 @@ serve(async (req) => {
         });
       }
       
-      // Construct the base URL without query parameters for signature validation
-      const baseUrl = `https://${host}${url.pathname}`;
+      // Construct the full URL including query parameters for signature validation
+      const fullRequestUrl = `https://${host}${url.pathname}${url.search}`;
       
       // Validate Twilio signature
       const isValidSignature = await validateTwilioSignature(
         twilioAuthToken,
         twilioSignature,
-        baseUrl,
+        fullRequestUrl,
         params,
         requestId
       );
@@ -610,7 +605,7 @@ serve(async (req) => {
       if (!isValidSignature) {
         logWithContext('ERROR', 'Invalid Twilio signature', requestId, {
           providedSignature: twilioSignature.substring(0, 20) + '...',
-          url: baseUrl,
+          url: fullRequestUrl,
           paramsCount: Object.keys(params).length
         });
         return new Response('Invalid Twilio signature', { 
