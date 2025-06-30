@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { SignedIn, SignedOut, useUser, useAuth } from '@clerk/clerk-react';
+import { SignedIn, SignedOut, useUser, useAuth, SignUpButton } from '@clerk/clerk-react';
 import { Check, Star, Zap, Crown, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { createAuthenticatedSupabaseClient } from '../lib/supabase';
@@ -149,8 +149,8 @@ const Pricing = () => {
 
   const handleCtaClick = () => {
     if (!user) {
-      // Not signed in - redirect to sign up
-      navigate('/');
+      // Not signed in - this will be handled by SignUpButton
+      return;
     } else if (isOnboardingComplete === false) {
       // Signed in but onboarding not complete - redirect to dashboard (which will redirect to onboarding)
       navigate('/dashboard');
@@ -179,8 +179,11 @@ const Pricing = () => {
     console.log('🎯 Plan selection:', selectedPlan, 'Billing:', billingCycle);
     
     if (selectedPlan === 'free') {
-      // For free plan, use existing CTA logic
-      handleCtaClick();
+      // For free plan, handle based on auth status
+      if (user) {
+        handleCtaClick();
+      }
+      // If not signed in, the SignUpButton will handle it
     } else {
       // For paid plans (starter/premium), redirect to checkout
       const checkoutUrl = `/checkout?plan=${selectedPlan}&billing=${billingCycle}`;
@@ -424,12 +427,30 @@ const Pricing = () => {
             </div>
 
             <div className="text-center">
-              <button 
-                onClick={handleChoosePlan}
-                className="btn btn-primary text-lg px-8 py-4 font-heading w-full sm:w-auto"
-              >
-                {selectedPlan === 'free' ? 'Get Started Free' : `Choose ${plans[selectedPlan as keyof typeof plans].name}`}
-              </button>
+              <SignedIn>
+                <button 
+                  onClick={handleChoosePlan}
+                  className="btn btn-primary text-lg px-8 py-4 font-heading w-full sm:w-auto"
+                >
+                  {selectedPlan === 'free' ? 'Get Started Free' : `Choose ${plans[selectedPlan as keyof typeof plans].name}`}
+                </button>
+              </SignedIn>
+              <SignedOut>
+                {selectedPlan === 'free' ? (
+                  <SignUpButton mode="modal">
+                    <button className="btn btn-primary text-lg px-8 py-4 font-heading w-full sm:w-auto">
+                      Get Started Free
+                    </button>
+                  </SignUpButton>
+                ) : (
+                  <button 
+                    onClick={handleChoosePlan}
+                    className="btn btn-primary text-lg px-8 py-4 font-heading w-full sm:w-auto"
+                  >
+                    Choose {plans[selectedPlan as keyof typeof plans].name}
+                  </button>
+                )}
+              </SignedOut>
             </div>
           </div>
         </motion.div>
@@ -525,20 +546,29 @@ const Pricing = () => {
           <p className="text-lg text-text-secondary mb-8 font-body max-w-2xl mx-auto">
             Join thousands of people who are already transforming their lives with personalized guidance from their future selves.
           </p>
-          <button 
-            onClick={handleCtaClick}
-            disabled={isCheckingOnboarding}
-            className="btn btn-primary text-lg px-8 py-4 font-heading"
-          >
-            {isCheckingOnboarding ? (
-              <>
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                Loading...
-              </>
-            ) : (
-              getCtaButtonText()
-            )}
-          </button>
+          <SignedIn>
+            <button 
+              onClick={handleCtaClick}
+              disabled={isCheckingOnboarding}
+              className="btn btn-primary text-lg px-8 py-4 font-heading"
+            >
+              {isCheckingOnboarding ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                  Loading...
+                </>
+              ) : (
+                getCtaButtonText()
+              )}
+            </button>
+          </SignedIn>
+          <SignedOut>
+            <SignUpButton mode="modal">
+              <button className="btn btn-primary text-lg px-8 py-4 font-heading">
+                Get Started Free
+              </button>
+            </SignUpButton>
+          </SignedOut>
         </motion.div>
       </div>
     </div>

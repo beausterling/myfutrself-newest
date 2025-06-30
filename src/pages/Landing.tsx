@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useAuth, useUser } from '@clerk/clerk-react';
+import { useAuth, useUser, SignUpButton } from '@clerk/clerk-react';
 import {
   ArrowRight,
   Sparkles,
@@ -235,12 +235,12 @@ const Landing = () => {
                   </button>
                 </Link>
               ) : (
-                <Link to="/waitlist">
+                <SignUpButton mode="modal">
                   <button className="btn btn-primary flex items-center justify-center gap-3 text-lg px-10 py-4 font-heading transform-gpu">
                     Get Started
                     <ArrowRight className="w-5 h-5" />
                   </button>
-                </Link>
+                </SignUpButton>
               )}
             </motion.div>
           </motion.div>
@@ -400,12 +400,12 @@ const Landing = () => {
                 </button>
               </Link>
             ) : (
-              <Link to="/waitlist">
+              <SignUpButton mode="modal">
                 <button className="btn btn-primary flex items-center justify-center gap-3 text-lg px-12 py-4 font-heading mx-auto transform-gpu">
                   Get Started
                   <ArrowRight className="w-5 h-5" />
                 </button>
-              </Link>
+              </SignUpButton>
             )}
           </motion.div>
         </div>
@@ -486,12 +486,12 @@ const Landing = () => {
                 </button>
               </Link>
             ) : (
-              <Link to="/waitlist">
+              <SignUpButton mode="modal">
                 <button className="btn btn-primary flex items-center justify-center gap-3 text-lg px-12 py-4 font-heading mx-auto transform-gpu">
                   Get Started
                   <ArrowRight className="w-5 h-5" />
                 </button>
-              </Link>
+              </SignUpButton>
             )}
             <p className="text-white/50 text-caption mt-4 font-body">
               Be the first to know when we launch
