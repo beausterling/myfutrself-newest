@@ -237,7 +237,7 @@ const Landing = () => {
               ) : (
                 <Link to="/waitlist">
                   <button className="btn btn-primary flex items-center justify-center gap-3 text-lg px-10 py-4 font-heading transform-gpu">
-                    Join Waitlist
+                    Get Started
                     <ArrowRight className="w-5 h-5" />
                   </button>
                 </Link>
@@ -402,7 +402,7 @@ const Landing = () => {
             ) : (
               <Link to="/waitlist">
                 <button className="btn btn-primary flex items-center justify-center gap-3 text-lg px-12 py-4 font-heading mx-auto transform-gpu">
-                  Join Waitlist
+                  Get Started
                   <ArrowRight className="w-5 h-5" />
                 </button>
               </Link>
@@ -488,7 +488,7 @@ const Landing = () => {
             ) : (
               <Link to="/waitlist">
                 <button className="btn btn-primary flex items-center justify-center gap-3 text-lg px-12 py-4 font-heading mx-auto transform-gpu">
-                  Join Waitlist
+                  Get Started
                   <ArrowRight className="w-5 h-5" />
                 </button>
               </Link>

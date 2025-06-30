@@ -85,14 +85,12 @@ const Header = ({ theme, toggleTheme }: { theme: string; toggleTheme: () => void
             </button>
           </SignedIn>
           <SignedOut>
-            <Link to="/pricing" className="text-white/80 hover:text-white transition-colors font-body">
-              Pricing
-            </Link>
-            <Link to="/">
-              <button className="btn btn-primary font-heading">
-                Get Started
-              </button>
-            </Link>
+            <button 
+              onClick={toggleMenu}
+              className="btn btn-ghost p-2"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
           </SignedOut>
         </div>
 
@@ -135,7 +133,8 @@ const Header = ({ theme, toggleTheme }: { theme: string; toggleTheme: () => void
               
               <SignedIn>
                 <div className="space-y-4">
-                  <div className="flex items-center gap-3 p-4 bg-white/5 rounded-xl border border-white/10">
+                  {/* Sign In/Sign Up buttons at top for signed in users - these would be profile actions */}
+                  <div className="flex gap-3 mb-6">
                     <UserButton 
                       afterSignOutUrl="/" 
                       appearance={{
@@ -144,12 +143,27 @@ const Header = ({ theme, toggleTheme }: { theme: string; toggleTheme: () => void
                         }
                       }}
                     />
+                    <div className="flex-1">
+                      <div className="text-white font-medium font-heading">Profile Settings</div>
+                      <p className="text-white/60 text-sm font-body">Manage your account</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 p-4 bg-white/5 rounded-xl border border-white/10">
+                    <div className="w-10 h-10 bg-gradient-to-r from-primary-aqua to-primary-blue rounded-full flex items-center justify-center text-white font-bold text-lg">
+                      💰
+                    </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <Settings className="w-4 h-4 text-white/60" />
-                        <span className="text-white font-medium font-heading">Profile Settings</span>
+                        <Link 
+                          to="/pricing" 
+                          className="text-white font-medium font-heading hover:text-primary-aqua transition-colors"
+                          onClick={() => setIsMenuOpen(false)}
+                        >
+                          Pricing
+                        </Link>
                       </div>
-                      <p className="text-white/60 text-sm font-body">Manage your account</p>
+                      <p className="text-white/60 text-sm font-body">View plans and pricing</p>
                     </div>
                   </div>
                   
@@ -190,17 +204,34 @@ const Header = ({ theme, toggleTheme }: { theme: string; toggleTheme: () => void
               
               <SignedOut>
                 <div className="space-y-4">
+                  {/* Sign In/Sign Up buttons at top */}
+                  <div className="flex gap-3 mb-6">
+                    <Link to="/" onClick={() => setIsMenuOpen(false)}>
+                      <button className="flex-1 btn btn-outline font-heading">
+                        Sign In
+                      </button>
+                    </Link>
+                    <Link to="/" onClick={() => setIsMenuOpen(false)}>
+                      <button className="flex-1 btn btn-primary font-heading">
+                        Sign Up
+                      </button>
+                    </Link>
+                  </div>
+
                   <Link 
                     to="/pricing" 
                     className="block p-4 bg-white/5 rounded-xl border border-white/10 text-white hover:bg-white/10 transition-colors font-body"
                     onClick={() => setIsMenuOpen(false)}
                   >
-                    <span className="text-lg">💰</span> Pricing
-                  </Link>
-                  <Link to="/" onClick={() => setIsMenuOpen(false)}>
-                    <button className="w-full btn btn-primary font-heading">
-                      🚀 Get Started
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-r from-primary-aqua to-primary-blue rounded-full flex items-center justify-center text-white font-bold text-lg">
+                        💰
+                      </div>
+                      <div>
+                        <div className="text-white font-medium font-heading">Pricing</div>
+                        <p className="text-white/60 text-sm font-body">View plans and pricing</p>
+                      </div>
+                    </div>
                   </Link>
                   
                 </div>
