@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser, useAuth } from '@clerk/clerk-react';
-import { Phone, CheckCircle, AlertCircle, Speech, X, Mic, Headphones } from 'lucide-react';
+import { Phone, CheckCircle, AlertCircle, Speech, X, Mic, Headphones, VoiceNetwork } from 'lucide-react';
 import { useOnboarding } from '../../contexts/OnboardingContext';
 import { createAuthenticatedSupabaseClient } from '../../lib/supabase';
 import VoiceChatModal from '../../components/VoiceChatModal';
@@ -521,36 +521,41 @@ const TwilioSetup = () => {
 
             <button
               onClick={handleStartVoiceChat}
+              disabled={true}
               className="btn btn-primary w-full text-lg py-4 font-heading"
             >
               <div className="flex items-center justify-center gap-3">
                 <Mic className="w-5 h-5" />
-                <span>Start Voice Chat</span>
+                <span>Start Voice Chat (Coming Soon)</span>
               </div>
             </button>
+            
+            <div className="text-center mt-4">
+              <p className="text-red-400 text-sm font-body">
+                Voice chat is currently unavailable
+              </p>
+            </div>
           </div>
 
-          {/* Information Card */}
-          <div className="card bg-white/5 border-white/10">
-            <h4 className="text-lg font-semibold mb-4 font-heading">What happens during the test?</h4>
-            <ul className="space-y-3 text-sm font-body text-white/80">
-              <li className="flex items-start gap-3">
-                <div className="w-2 h-2 bg-primary-aqua rounded-full mt-2 flex-shrink-0"></div>
-                <span>You'll receive a real phone call from your future self</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <div className="w-2 h-2 bg-primary-aqua rounded-full mt-2 flex-shrink-0"></div>
-                <span>The AI will speak using your selected voice</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <div className="w-2 h-2 bg-primary-aqua rounded-full mt-2 flex-shrink-0"></div>
-                <span>You can have a real conversation about your goals</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <div className="w-2 h-2 bg-primary-aqua rounded-full mt-2 flex-shrink-0"></div>
-                <span>The AI will provide personalized motivation and accountability</span>
-              </li>
-            </ul>
+          {/* Test Voice Clone Card */}
+          <div className="card mt-8">
+            <h3 className="text-xl font-semibold mb-4 font-heading flex items-center gap-3">
+              <VoiceNetwork className="w-6 h-6 text-primary-aqua" />
+              Test Voice Clone
+            </h3>
+            <p className="text-white/70 mb-6 font-body">
+              Test your voice clone to ensure it sounds like you want it to. This will process your voice recording and generate a sample.
+            </p>
+
+            <button
+              onClick={() => console.log('Test voice clone clicked')}
+              className="btn btn-primary w-full text-lg py-4 font-heading"
+            >
+              <div className="flex items-center justify-center gap-3">
+                <VoiceNetwork className="w-5 h-5" />
+                <span>Test Voice Clone</span>
+              </div>
+            </button>
           </div>
         </div>
 
