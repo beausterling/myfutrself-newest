@@ -102,6 +102,7 @@ function createSuccessResponse(
 function validateEnvironment(requestId: string): { 
   supabaseUrl: string; 
   supabaseServiceKey: string; 
+  supabaseAnonKey: string;
   twilioAccountSid: string;
   twilioAuthToken: string;
   twilioFromNumber: string;
@@ -110,6 +111,7 @@ function validateEnvironment(requestId: string): {
   
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
   const twilioAccountSid = Deno.env.get('TWILIO_ACCOUNT_SID');
   const twilioAuthToken = Deno.env.get('TWILIO_AUTH_TOKEN');
   const twilioFromNumber = Deno.env.get('TWILIO_FROM_NUMBER');
@@ -117,6 +119,7 @@ function validateEnvironment(requestId: string): {
   const missing = [];
   if (!supabaseUrl) missing.push('SUPABASE_URL');
   if (!supabaseServiceKey) missing.push('SUPABASE_SERVICE_ROLE_KEY');
+  if (!supabaseAnonKey) missing.push('SUPABASE_ANON_KEY');
   if (!twilioAccountSid) missing.push('TWILIO_ACCOUNT_SID');
   if (!twilioAuthToken) missing.push('TWILIO_AUTH_TOKEN');
   if (!twilioFromNumber) missing.push('TWILIO_FROM_NUMBER');
@@ -126,7 +129,7 @@ function validateEnvironment(requestId: string): {
   }
   
   logWithContext('INFO', 'Environment variables validated successfully', requestId);
-  return { supabaseUrl, supabaseServiceKey, twilioAccountSid, twilioAuthToken, twilioFromNumber };
+  return { supabaseUrl, supabaseServiceKey, supabaseAnonKey, twilioAccountSid, twilioAuthToken, twilioFromNumber };
 }
 
 // Extract user ID from Clerk JWT
@@ -252,11 +255,12 @@ async function getAIResponse(
   }
 }
 
-// Call ElevenLabs TTS Edge Function
+// Call ElevenLabs TTS Edge Function and upload to storage
 async function generateSpeech(
   text: string,
   voiceId: string,
   supabaseUrl: string,
+  supabaseAnonKey: string,
   requestId: string
 ): Promise<string> {
   logWithContext('INFO', 'Calling ElevenLabs TTS Edge Function', requestId, { 
@@ -271,7 +275,7 @@ async function generateSpeech(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
+        'Authorization': `Bearer ${supabaseAnonKey}`
       },
       body: JSON.stringify({
         voiceId: voiceId,
@@ -289,25 +293,43 @@ async function generateSpeech(
       throw new Error(errorData.error || `ElevenLabs TTS failed: ${response.status}`);
     }
 
-    // The response should be an audio blob
     const audioBlob = await response.blob();
     
-    // Convert blob to base64 for TwiML
-    const arrayBuffer = await audioBlob.arrayBuffer();
-    const uint8Array = new Uint8Array(arrayBuffer);
-    const base64Audio = btoa(String.fromCharCode(...uint8Array));
+    // --- NEW: Upload audio to Supabase Storage and return public URL ---
+    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
     
-    // Create a data URL for the audio
-    const audioDataUrl = `data:audio/mpeg;base64,${base64Audio}`;
+    const filename = `tts-${requestId}-${Date.now()}.mp3`;
+    const filePath = `temp/${filename}`; // Store in a 'temp' folder within the bucket
 
-    logWithContext('INFO', 'Speech generated successfully', requestId, { 
-      audioSize: arrayBuffer.byteLength 
+    logWithContext('INFO', 'Uploading generated audio to Supabase Storage', requestId, { filePath, audioSize: audioBlob.size });
+
+    const { data: uploadData, error: uploadError } = await supabaseClient.storage
+      .from('twilio-audio-cache')
+      .upload(filePath, audioBlob, {
+        contentType: 'audio/mpeg',
+        upsert: true // Overwrite if file with same name exists (unlikely with timestamp)
+      });
+
+    if (uploadError) {
+      logWithContext('ERROR', 'Failed to upload audio to Supabase Storage', requestId, { error: uploadError.message });
+      throw new Error(`Failed to upload audio to storage: ${uploadError.message}`);
+    }
+
+    const { data: publicUrlData } = supabaseClient.storage
+      .from('twilio-audio-cache')
+      .getPublicUrl(filePath);
+
+    const publicAudioUrl = publicUrlData.publicUrl;
+
+    logWithContext('INFO', 'Speech uploaded and public URL generated successfully', requestId, { 
+      publicAudioUrl,
+      audioSize: audioBlob.size 
     });
 
-    return audioDataUrl;
+    return publicAudioUrl;
 
   } catch (error) {
-    logWithContext('ERROR', 'Error calling ElevenLabs TTS Edge Function', requestId, {
+    logWithContext('ERROR', 'Error calling ElevenLabs TTS Edge Function or uploading audio', requestId, {
       error: error instanceof Error ? error.message : String(error),
       voiceId
     });
@@ -408,7 +430,7 @@ serve(async (req) => {
 
   try {
     // Validate environment variables
-    const { supabaseUrl, supabaseServiceKey, twilioAccountSid, twilioAuthToken, twilioFromNumber } = validateEnvironment(requestId);
+    const { supabaseUrl, supabaseServiceKey, supabaseAnonKey, twilioAccountSid, twilioAuthToken, twilioFromNumber } = validateEnvironment(requestId);
 
     // Create Supabase admin client
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -507,7 +529,7 @@ serve(async (req) => {
       const voicePreference = await getUserVoicePreference(supabase, userId, requestId);
 
       // Generate speech from AI response
-      const audioUrl = await generateSpeech(aiResponseText, voicePreference, supabaseUrl, requestId);
+      const audioUrl = await generateSpeech(aiResponseText, voicePreference, supabaseUrl, supabaseAnonKey, requestId);
 
       // Generate TwiML response
       const webhookUrl = `${supabaseUrl}/functions/v1/twilio-call-handler/twiml-webhook`;
