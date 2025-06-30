@@ -3,7 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-twilio-signature',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
@@ -155,6 +155,70 @@ function extractUserIdFromJWT(authHeader: string | null, requestId: string): str
   }
 }
 
+// Validate Twilio signature using HMAC-SHA1
+async function validateTwilioSignature(
+  authToken: string,
+  signature: string,
+  url: string,
+  params: Record<string, string>,
+  requestId: string
+): Promise<boolean> {
+  logWithContext('INFO', 'Validating Twilio signature', requestId, { 
+    url,
+    hasSignature: !!signature,
+    paramsCount: Object.keys(params).length 
+  });
+
+  try {
+    // Create the data string that Twilio signed
+    let data = url;
+    
+    // Sort parameters by key and append to URL
+    const sortedKeys = Object.keys(params).sort();
+    for (const key of sortedKeys) {
+      data += key + params[key];
+    }
+
+    logWithContext('INFO', 'Constructed data string for signature validation', requestId, { 
+      dataLength: data.length,
+      sortedKeysCount: sortedKeys.length 
+    });
+
+    // Create HMAC-SHA1 signature
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(authToken);
+    const messageData = encoder.encode(data);
+
+    const cryptoKey = await crypto.subtle.importKey(
+      'raw',
+      keyData,
+      { name: 'HMAC', hash: 'SHA-1' },
+      false,
+      ['sign']
+    );
+
+    const signatureBuffer = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
+    const computedSignature = btoa(String.fromCharCode(...new Uint8Array(signatureBuffer)));
+
+    const isValid = computedSignature === signature;
+
+    logWithContext(isValid ? 'INFO' : 'WARN', 'Twilio signature validation result', requestId, {
+      isValid,
+      providedSignatureLength: signature.length,
+      computedSignatureLength: computedSignature.length,
+      signaturesMatch: computedSignature === signature
+    });
+
+    return isValid;
+
+  } catch (error) {
+    logWithContext('ERROR', 'Error during Twilio signature validation', requestId, {
+      error: error instanceof Error ? error.message : String(error)
+    });
+    return false;
+  }
+}
+
 // Get user's voice preference from database
 async function getUserVoicePreference(
   supabase: any,
@@ -295,7 +359,7 @@ async function generateSpeech(
 
     const audioBlob = await response.blob();
     
-    // --- NEW: Upload audio to Supabase Storage and return public URL ---
+    // Upload audio to Supabase Storage and return public URL
     const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
     
     const filename = `tts-${requestId}-${Date.now()}.mp3`;
@@ -437,7 +501,7 @@ serve(async (req) => {
 
     // Route handling
     if (pathname.endsWith('/initiate-call')) {
-      // Handle call initiation
+      // Handle call initiation - requires JWT authentication
       logWithContext('INFO', 'Processing call initiation request', requestId);
 
       // Extract user ID from JWT
@@ -481,23 +545,68 @@ serve(async (req) => {
       );
 
     } else if (pathname.endsWith('/twiml-webhook')) {
-      // Handle TwiML webhook requests from Twilio
+      // Handle TwiML webhook requests from Twilio - requires signature validation
       logWithContext('INFO', 'Processing TwiML webhook request', requestId);
+
+      // Get Twilio signature from headers
+      const twilioSignature = req.headers.get('x-twilio-signature');
+      if (!twilioSignature) {
+        logWithContext('ERROR', 'Missing Twilio signature header', requestId);
+        return new Response('Missing Twilio signature', { 
+          status: 403,
+          headers: { 'Content-Type': 'text/plain' }
+        });
+      }
 
       // Parse form data from Twilio
       const formData = await req.formData();
       const webhookData: TwilioWebhookRequest = {};
+      const params: Record<string, string> = {};
       
       for (const [key, value] of formData.entries()) {
-        webhookData[key as keyof TwilioWebhookRequest] = value as string;
+        const stringValue = value as string;
+        webhookData[key as keyof TwilioWebhookRequest] = stringValue;
+        params[key] = stringValue;
       }
 
-      // Get user_id from query parameters
+      // Get user_id from query parameters and add to params for signature validation
       const userId = url.searchParams.get('user_id');
       if (!userId) {
         logWithContext('ERROR', 'Missing user_id in webhook request', requestId);
-        return new Response('Missing user_id parameter', { status: 400 });
+        return new Response('Missing user_id parameter', { 
+          status: 400,
+          headers: { 'Content-Type': 'text/plain' }
+        });
       }
+
+      // Add query parameters to params for signature validation
+      for (const [key, value] of url.searchParams.entries()) {
+        params[key] = value;
+      }
+
+      // Validate Twilio signature
+      const fullUrl = req.url; // Use the full URL including query parameters
+      const isValidSignature = await validateTwilioSignature(
+        twilioAuthToken,
+        twilioSignature,
+        fullUrl,
+        params,
+        requestId
+      );
+
+      if (!isValidSignature) {
+        logWithContext('ERROR', 'Invalid Twilio signature', requestId, {
+          providedSignature: twilioSignature.substring(0, 20) + '...',
+          url: fullUrl,
+          paramsCount: Object.keys(params).length
+        });
+        return new Response('Invalid Twilio signature', { 
+          status: 403,
+          headers: { 'Content-Type': 'text/plain' }
+        });
+      }
+
+      logWithContext('INFO', 'Twilio signature validated successfully', requestId);
 
       logWithContext('INFO', 'TwiML webhook data received', requestId, {
         callSid: webhookData.CallSid,
