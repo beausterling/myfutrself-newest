@@ -195,6 +195,15 @@ const Landing = () => {
       {/* Hero Section */}
       <section className="relative overflow-hidden pt-32">
         <div className="container mx-auto px-4 pb-8">
+          {/* White Circle Image */}
+          <a href="https://bolt.new/" className="absolute top-4 right-4 md:top-8 md:right-8 z-10">
+            <img 
+              src="/white_circle_360x360.png" 
+              alt="Bolt" 
+              className="w-12 h-12 md:w-16 md:h-16 rounded-full hover:opacity-80 transition-opacity"
+            />
+          </a>
+          
           <motion.div className="text-center max-w-5xl mx-auto" {...fadeInUp}>
             <motion.div
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-lg border border-white/20 mb-8"
