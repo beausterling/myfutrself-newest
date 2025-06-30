@@ -234,18 +234,24 @@ const TwilioSetup = () => {
             >
               {isTestingCall ? (
                 <>
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-3" />
-                  Testing Connection...
+                  <div className="flex items-center justify-center gap-3">
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Testing Connection...</span>
+                  </div>
                 </>
               ) : testCallStatus === 'success' ? (
                 <>
-                  <CheckCircle className="w-5 h-5 mr-3" />
-                  Test Completed Successfully
+                  <div className="flex items-center justify-center gap-3">
+                    <CheckCircle className="w-5 h-5" />
+                    <span>Test Completed Successfully</span>
+                  </div>
                 </>
               ) : (
                 <>
-                  <Phone className="w-5 h-5 mr-3" />
-                  Start Test Call
+                  <div className="flex items-center justify-center gap-3">
+                    <Phone className="w-5 h-5" />
+                    <span>Start Test Call</span>
+                  </div>
                 </>
               )}
             </button>
