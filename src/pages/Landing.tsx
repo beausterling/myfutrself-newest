@@ -238,22 +238,26 @@ const Landing = () => {
         <div className="absolute top-40 right-20 w-32 h-32 rounded-full bg-primary-blue/20 blur-xl transform-gpu" style={{ animation: 'float 6s ease-in-out infinite 2s' }}></div>
         <div className="absolute bottom-20 left-1/4 w-16 h-16 rounded-full bg-accent-purple/20 blur-xl transform-gpu" style={{ animation: 'float 6s ease-in-out infinite 4s' }}></div>
       </section>
-
-      {/* Features Section - Optimized */}
+      
+      {/* Quote Section */}
       <section className="py-20">
         <div className="container mx-auto px-4">
-          <motion.div 
-            className="text-center mb-16"
+          <motion.div
             initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            viewport={{ once: true, margin: "-100px" }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.6 }}
+            className="max-w-4xl mx-auto text-center"
           >
-            <h2 className="font-heading font-bold mb-6">
-              How <span className="gradient-text">MyFutrSelf</span> Works
-            </h2>
-            <p className="text-body-large text-white/70 max-w-2xl mx-auto font-body">
-              Your future self will literally call you, to keep you on track.
+            <div className="bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 p-8 md:p-12">
+              <blockquote className="text-xl md:text-2xl font-body text-white/90 italic leading-relaxed mb-6">
+                "The person you are today is the result of conversations you had with yourself yesterday. The person you become tomorrow depends on the conversations you have with yourself today."
+              </blockquote>
+              <cite className="text-primary-aqua font-heading font-semibold">
+                — Dr. Hal Hershfield, UCLA Behavioral Scientist
+              </cite>
+            </div>
+          </motion.div>
+        </div>
             </p>
           </motion.div>
 
