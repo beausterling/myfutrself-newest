@@ -195,12 +195,19 @@ const Landing = () => {
       {/* Hero Section */}
       <section className="relative overflow-hidden pt-32">
         <div className="container mx-auto px-4 pb-8">
-          {/* White Circle Image */}
-          <a href="https://bolt.new/" className="absolute top-4 right-4 md:top-8 md:right-8 z-10">
+          {/* White Circle Image with glow effect */}
+          <a 
+            href="https://bolt.new/" 
+            className="absolute top-32 right-4 md:top-40 md:right-8 z-10 rounded-full"
+            style={{ 
+              boxShadow: '0 0 15px 5px rgba(36, 210, 211, 0.3)',
+              transition: 'all 0.3s ease'
+            }}
+          >
             <img 
               src="/white_circle_360x360.png" 
               alt="Bolt" 
-              className="w-12 h-12 md:w-16 md:h-16 rounded-full hover:opacity-80 transition-opacity"
+              className="w-12 h-12 md:w-16 md:h-16 rounded-full hover:opacity-80 transition-all hover:scale-105"
             />
           </a>
           
