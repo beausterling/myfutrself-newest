@@ -21,7 +21,6 @@ import Landing from './pages/Landing';
 import Dashboard from './pages/Dashboard';
 import Onboarding from './pages/Onboarding';
 import Pricing from './pages/Pricing';
-import TestPricing from './pages/TestPricing';
 import NotFound from './pages/NotFound';
 import LoadingScreen from './components/ui/LoadingScreen';
 
@@ -577,9 +576,6 @@ function App() {
           
           {/* Pricing route */}
           <Route path="/pricing" element={<Pricing />} />
-          
-          {/* Test Pricing route */}
-          <Route path="/test-pricing" element={<TestPricing />} />
           
           {/* Onboarding route - available after signup but before completing profile */}
           <Route path="/onboarding/*" element={
