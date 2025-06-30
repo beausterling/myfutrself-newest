@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import twilio, { validateRequest } from 'https://esm.sh/twilio@5.3.4'
+import { validateRequest } from 'https://esm.sh/twilio@5.3.4'
+import { VoiceResponse } from 'https://esm.sh/twilio@5.3.4/lib/twiml/VoiceResponse'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -103,7 +104,7 @@ function validateEnvironment(requestId: string): {
   
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-  const supabaseAnonKey = Deno.env.get('VITE_SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_ANON_KEY');
+  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
   const twilioAccountSid = Deno.env.get('TWILIO_ACCOUNT_SID');
   const twilioAuthToken = Deno.env.get('TWILIO_AUTH_TOKEN');
   const twilioFromNumber = Deno.env.get('TWILIO_FROM_NUMBER');
@@ -111,7 +112,7 @@ function validateEnvironment(requestId: string): {
   const missing = [];
   if (!supabaseUrl) missing.push('SUPABASE_URL');
   if (!supabaseServiceKey) missing.push('SUPABASE_SERVICE_ROLE_KEY');
-  if (!supabaseAnonKey) missing.push('VITE_SUPABASE_ANON_KEY or SUPABASE_ANON_KEY');
+  if (!supabaseAnonKey) missing.push('SUPABASE_ANON_KEY');
   if (!twilioAccountSid) missing.push('TWILIO_ACCOUNT_SID');
   if (!twilioAuthToken) missing.push('TWILIO_AUTH_TOKEN');
   if (!twilioFromNumber) missing.push('TWILIO_FROM_NUMBER');
@@ -331,7 +332,7 @@ async function generateSpeech(
 
 // Generate TwiML response using Twilio VoiceResponse
 function generateTwiML(audioUrl: string, webhookUrl: string, userId: string): string {
-  const twiml = new twilio.twiml.VoiceResponse();
+  const twiml = new VoiceResponse();
   
   // Play the AI-generated audio
   twiml.play({}, audioUrl);
