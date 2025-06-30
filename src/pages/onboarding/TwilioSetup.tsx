@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser, useAuth } from '@clerk/clerk-react';
-import { Phone, CheckCircle, AlertCircle, MessageSquare } from 'lucide-react';
+import { Phone, CheckCircle, AlertCircle, Speech } from 'lucide-react';
 import { useOnboarding } from '../../contexts/OnboardingContext';
 import { createAuthenticatedSupabaseClient } from '../../lib/supabase';
 
@@ -188,7 +188,7 @@ const TwilioSetup = () => {
           {/* Test Call Card */}
           <div className="card">
             <h3 className="text-xl font-semibold mb-4 font-heading flex items-center gap-3">
-              <MessageSquare className="w-6 h-6 text-primary-aqua" />
+              <Speech className="w-6 h-6 text-primary-aqua" />
               Test MyFutrSelf
             </h3>
             <p className="text-white/70 mb-6 font-body">
