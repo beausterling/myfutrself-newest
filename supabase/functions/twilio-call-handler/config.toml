@@ -1,0 +1,2 @@
+# supabase/functions/twilio-call-handler/config.toml
+auth = false
