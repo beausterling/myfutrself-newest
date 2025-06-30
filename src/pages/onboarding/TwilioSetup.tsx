@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser, useAuth } from '@clerk/clerk-react';
-import { Phone, CheckCircle, AlertCircle, Speech, X, Mic, Headphones, Volume2, Loader2 } from 'lucide-react';
+import { Phone, CheckCircle, AlertCircle, Speech, X, Mic, Headphones } from 'lucide-react';
 import { useOnboarding } from '../../contexts/OnboardingContext';
 import { createAuthenticatedSupabaseClient } from '../../lib/supabase';
+import VoiceChatModal from '../../components/VoiceChatModal';
 
 const TwilioSetup = () => {
   const navigate = useNavigate();
@@ -20,18 +21,7 @@ const TwilioSetup = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [showVoiceChatModal, setShowVoiceChatModal] = useState(false);
   const [callSid, setCallSid] = useState<string | null>(null);
-  const [isRecording, setIsRecording] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [recordingTime, setRecordingTime] = useState(0);
-  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
-  const [aiResponseAudio, setAiResponseAudio] = useState<string | null>(null);
-  const [aiResponseText, setAiResponseText] = useState<string | null>(null);
-  const [conversation, setConversation] = useState<Array<{role: 'user' | 'ai', text: string, audio?: string}>>([]);
-  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
-  const [recordingInterval, setRecordingInterval] = useState<NodeJS.Timeout | null>(null);
-  const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
-  const [audioSource, setAudioSource] = useState<AudioBufferSourceNode | null>(null);
+  const [futurePhotoUrl, setFuturePhotoUrl] = useState<string | null>(null);
 
   // Disable background scrolling when modal is open
   useEffect(() => {
@@ -57,31 +47,6 @@ const TwilioSetup = () => {
       };
     }
   }, [showPhoneModal]);
-
-  // Disable background scrolling when voice chat modal is open
-  useEffect(() => {
-    if (showVoiceChatModal) {
-      const originalBodyOverflow = document.body.style.overflow;
-      const originalHtmlOverflow = document.documentElement.style.overflow;
-      
-      document.documentElement.style.overflow = 'hidden';
-      document.body.style.overflow = 'hidden';
-      document.body.style.position = 'fixed';
-      document.body.style.width = '100%';
-      document.body.style.top = `-${window.scrollY}px`;
-      
-      const scrollY = window.scrollY;
-      
-      return () => {
-        document.documentElement.style.overflow = originalHtmlOverflow;
-        document.body.style.overflow = originalBodyOverflow;
-        document.body.style.position = '';
-        document.body.style.width = '';
-        document.body.style.top = '';
-        window.scrollTo(0, scrollY);
-      };
-    }
-  }, [showVoiceChatModal]);
 
   // Handle scroll effect for blur
   useEffect(() => {
@@ -208,327 +173,41 @@ const TwilioSetup = () => {
     }
   };
 
-  // Start recording audio for voice chat
-  const startRecording = async () => {
-    try {
-      console.log('🎤 Starting recording process');
-      
-      // Clean up any existing recording session first
-      if (mediaRecorder && isRecording) {
-        console.log('⏹️ Stopping existing recording before starting new one');
-        mediaRecorder.stop();
-      }
-      
-      if (recordingInterval) {
-        console.log('⏰ Clearing existing recording interval');
-        clearInterval(recordingInterval);
-        setRecordingInterval(null);
-      }
-      
-      // Clear previous audio blob
-      setAudioBlob(null);
-      setRecordingTime(0);
-      
-      console.log('🎤 Requesting microphone access');
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      
-      // Use audio/webm for better browser compatibility and smaller file sizes
-      const options = { mimeType: 'audio/webm' };
-      
-      // Fallback to default if webm is not supported
-      const recorder = new MediaRecorder(stream, MediaRecorder.isTypeSupported('audio/webm') ? options : undefined);
-      const chunks: BlobPart[] = [];
-
-      recorder.ondataavailable = (event) => {
-        console.log('📊 Recording data available:', event.data.size, 'bytes', 'type:', event.data.type);
-        chunks.push(event.data);
-      };
-
-      recorder.onstop = () => {
-        console.log('⏹️ Recording stopped, creating blob from', chunks.length, 'chunks');
-        
-        // Use the same MIME type as the recorder
-        const mimeType = recorder.mimeType || 'audio/webm';
-        const blob = new Blob(chunks, { type: mimeType });
-        
-        console.log('📊 Final blob created:', {
-          size: blob.size,
-          type: blob.type,
-          chunksCount: chunks.length
-        });
-        
-        setAudioBlob(blob);
-        
-        // Stop stream tracks
-        stream.getTracks().forEach(track => {
-          track.stop();
-          console.log(`📡 Stopped track: ${track.kind}`);
-        });
-        
-        // Clear media recorder reference
-        setMediaRecorder(null);
-        console.log('✅ Recording cleanup completed');
-      };
-
-      recorder.onerror = (event) => {
-        console.error('❌ MediaRecorder error:', event);
-        setError('Recording failed. Please try again.');
-        
-        // Clean up on error
-        stream.getTracks().forEach(track => track.stop());
-        setIsRecording(false);
-        setMediaRecorder(null);
-        if (recordingInterval) {
-          clearInterval(recordingInterval);
-          setRecordingInterval(null);
-        }
-      };
-
-      console.log('▶️ Starting MediaRecorder');
-      recorder.start();
-      setMediaRecorder(recorder);
-      setIsRecording(true);
-      setRecordingTime(0);
-
-      const interval = setInterval(() => {
-        setRecordingTime(prev => {
-          if (prev >= 30) {
-            console.log('⏰ Recording time limit reached, stopping');
-            recorder.stop();
-            setIsRecording(false);
-            clearInterval(interval);
-            setRecordingInterval(null);
-            return 30;
-          }
-          return prev + 1;
-        });
-      }, 1000);
-      setRecordingInterval(interval);
-
-      console.log('✅ Recording started successfully');
-    } catch (error) {
-      console.error('❌ Error starting recording:', error);
-      setError('Failed to access microphone. Please check permissions.');
-      
-      setIsRecording(false);
-      setMediaRecorder(null);
-    }
-  };
-
-  // Stop recording
-  const stopRecording = () => {
-    console.log('⏹️ Manual stop recording requested');
-    
-    if (mediaRecorder && isRecording) {
-      console.log('⏹️ Stopping MediaRecorder');
-      mediaRecorder.stop();
-      setIsRecording(false);
-      
-      if (recordingInterval) {
-        console.log('⏰ Clearing recording interval');
-        clearInterval(recordingInterval);
-        setRecordingInterval(null);
-      }
-      
-      console.log('✅ Stop recording initiated');
-    } else {
-      console.log('⚠️ No active recording to stop');
-    }
-  };
-
-  // Process audio and get AI response
-  const processAudio = async () => {
-    if (!audioBlob || !user?.id) {
-      console.error('❌ No audio blob or user ID available');
-      setError('No audio recording available. Please try again.');
-      return;
-    }
-
-    try {
-      setIsProcessing(true);
-      console.log('🔄 Processing audio and getting AI response...');
-
-      // Convert blob to base64
-      const reader = new FileReader();
-      reader.readAsDataURL(audioBlob);
-      
-      reader.onloadend = async () => {
-        const base64Audio = reader.result as string;
-        console.log('✅ Audio converted to base64:', base64Audio.substring(0, 50) + '...');
-
-        // Get token for authentication
-        const token = await getToken({ template: 'supabase' });
-        if (!token) {
-          throw new Error('No authentication token available');
-        }
-
-        // Call the in-app-voice-chat Edge Function
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-        if (!supabaseUrl) {
-          throw new Error('Supabase URL not found in environment variables');
-        }
-
-        console.log('🔄 Calling in-app-voice-chat Edge Function...');
-        const response = await fetch(`${supabaseUrl}/functions/v1/in-app-voice-chat`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            audioData: base64Audio,
-            userId: user.id
-          })
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          console.error('❌ Edge Function error:', {
-            status: response.status,
-            statusText: response.statusText,
-            error: errorData
-          });
-          throw new Error(errorData.error || `Voice chat failed: ${response.status} ${response.statusText}`);
-        }
-
-        const result = await response.json();
-        console.log('✅ Voice chat response received:', {
-          success: result.success,
-          hasAudioResponse: !!result.audioResponse,
-          hasTextResponse: !!result.textResponse,
-          audioResponseLength: result.audioResponse?.length || 0
-        });
-
-        if (!result.success) {
-          throw new Error(result.error || 'Voice chat failed');
-        }
-
-        // Update conversation history
-        const userText = result.userText || 'You said something...';
-        const aiText = result.textResponse || 'AI response unavailable';
-        
-        setConversation(prev => [
-          ...prev,
-          { role: 'user', text: userText },
-          { role: 'ai', text: aiText, audio: result.audioResponse }
-        ]);
-
-        // Set AI response for immediate playback
-        setAiResponseText(aiText);
-        setAiResponseAudio(result.audioResponse);
-
-        // Auto-play the response
-        if (result.audioResponse) {
-          playAudioResponse(result.audioResponse);
-        }
-      };
-
-    } catch (error) {
-      console.error('❌ Error processing audio:', error);
-      setError(error instanceof Error ? error.message : 'Failed to process audio. Please try again.');
-    } finally {
-      setIsProcessing(false);
-      setAudioBlob(null); // Clear the audio blob for next recording
-    }
-  };
-
-  // Play audio response
-  const playAudioResponse = async (base64Audio: string) => {
-    try {
-      setIsPlaying(true);
-      console.log('🔊 Playing AI response audio...');
-
-      // Convert base64 to ArrayBuffer
-      const base64Data = base64Audio.split(',')[1];
-      const binaryString = atob(base64Data);
-      const bytes = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-      }
-
-      // Create AudioContext if it doesn't exist
-      if (!audioContext) {
-        const newAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-        setAudioContext(newAudioContext);
-      }
-
-      const context = audioContext || new (window.AudioContext || (window as any).webkitAudioContext)();
-      
-      // Decode audio data
-      const audioBuffer = await context.decodeAudioData(bytes.buffer);
-      
-      // Create source node
-      const source = context.createBufferSource();
-      source.buffer = audioBuffer;
-      source.connect(context.destination);
-      
-      // Set up event handlers
-      source.onended = () => {
-        console.log('✅ Audio playback ended');
-        setIsPlaying(false);
-        setAudioSource(null);
-      };
-      
-      // Store source for potential stopping
-      setAudioSource(source);
-      
-      // Start playback
-      source.start(0);
-      console.log('✅ Audio playback started');
-
-    } catch (error) {
-      console.error('❌ Error playing audio:', error);
-      setError('Failed to play audio response. Please try again.');
-      setIsPlaying(false);
-    }
-  };
-
-  // Stop audio playback
-  const stopAudioPlayback = () => {
-    if (audioSource) {
-      console.log('⏹️ Stopping audio playback');
-      audioSource.stop();
-      setAudioSource(null);
-      setIsPlaying(false);
-    }
-  };
-
   // Open voice chat modal
-  const handleStartVoiceChat = () => {
-    setShowVoiceChatModal(true);
-    setConversation([]);
-    setAiResponseAudio(null);
-    setAiResponseText(null);
-    setAudioBlob(null);
-    setError(null);
+  const handleStartVoiceChat = async () => {
+    try {
+      // Fetch user's future photo URL
+      if (user?.id) {
+        const token = await getToken({ template: 'supabase' });
+        if (token) {
+          const supabase = createAuthenticatedSupabaseClient(token);
+          const { data, error } = await supabase
+            .from('user_profiles')
+            .select('future_photo_url')
+            .eq('user_id', user.id)
+            .single();
+            
+          if (error) {
+            console.error('❌ Error fetching future photo URL:', error);
+          } else if (data?.future_photo_url) {
+            console.log('✅ Future photo URL fetched successfully');
+            setFuturePhotoUrl(data.future_photo_url);
+          }
+        }
+      }
+      
+      // Show the modal
+      setShowVoiceChatModal(true);
+    } catch (error) {
+      console.error('❌ Error preparing voice chat:', error);
+      setError('Failed to prepare voice chat. Please try again.');
+    }
   };
 
   // Close voice chat modal
   const handleVoiceChatModalClose = () => {
-    // Stop any active recording
-    if (isRecording && mediaRecorder) {
-      mediaRecorder.stop();
-    }
-    
-    // Stop any active audio playback
-    if (audioSource) {
-      audioSource.stop();
-    }
-    
-    // Clear intervals
-    if (recordingInterval) {
-      clearInterval(recordingInterval);
-    }
-    
-    // Reset states
-    setIsRecording(false);
-    setIsPlaying(false);
-    setIsProcessing(false);
     setShowVoiceChatModal(false);
-    setAudioBlob(null);
-    setRecordingTime(0);
-    setMediaRecorder(null);
-    setRecordingInterval(null);
+    setFuturePhotoUrl(null);
   };
 
   const handleStartTestCall = () => {
@@ -691,153 +370,7 @@ const TwilioSetup = () => {
       )}
 
       {/* Voice Chat Modal */}
-      {showVoiceChatModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-bg-primary border border-white/20 rounded-2xl p-6 max-w-md w-full relative">
-            <button
-              onClick={handleVoiceChatModalClose}
-              className="absolute top-4 right-4 text-white/60 hover:text-white transition-colors"
-            >
-              <X className="w-6 h-6" />
-            </button>
-            
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary-aqua/20 mb-4">
-                <Headphones className="w-8 h-8 text-primary-aqua" />
-              </div>
-              <h3 className="text-2xl font-bold mb-3 font-heading">Talk to Your Future Self</h3>
-              <p className="text-white/70 mb-6 text-sm font-body">
-                {isRecording ? 'Recording in progress...' : 
-                 isProcessing ? 'Processing your message...' : 
-                 isPlaying ? 'Your future self is speaking...' :
-                 audioBlob ? 'Ready to send your message' :
-                 'Click the microphone to start speaking'}
-              </p>
-              
-              {/* Conversation History */}
-              {conversation.length > 0 && (
-                <div className="mb-6 max-h-60 overflow-y-auto bg-white/5 rounded-xl p-4 border border-white/10">
-                  {conversation.map((message, index) => (
-                    <div key={index} className={`mb-3 text-left ${message.role === 'user' ? 'pl-2' : 'pl-4'}`}>
-                      <div className={`flex items-start gap-2 ${message.role === 'user' ? '' : 'border-l-2 border-primary-aqua'}`}>
-                        <div className={`p-2 rounded-lg ${message.role === 'user' ? 'bg-white/10' : 'bg-primary-aqua/10'} max-w-[90%]`}>
-                          <p className={`text-sm font-body ${message.role === 'user' ? 'text-white/80' : 'text-white'}`}>
-                            {message.text}
-                          </p>
-                        </div>
-                        {message.role === 'ai' && message.audio && (
-                          <button
-                            onClick={() => playAudioResponse(message.audio!)}
-                            className="p-1 rounded-full bg-primary-aqua/20 hover:bg-primary-aqua/30 transition-colors"
-                            title="Play response"
-                          >
-                            <Volume2 className="w-3 h-3 text-primary-aqua" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              
-              {/* Recording UI */}
-              <div className="mb-6">
-                {isRecording ? (
-                  <div className="text-center space-y-4">
-                    <div className="w-24 h-24 bg-red-500 rounded-full flex items-center justify-center mx-auto animate-pulse">
-                      <Mic className="w-10 h-10 text-white" />
-                    </div>
-                    <div>
-                      <p className="text-white text-xl font-bold">{recordingTime}s / 30s</p>
-                      <button
-                        onClick={stopRecording}
-                        className="mt-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
-                      >
-                        Stop Recording
-                      </button>
-                    </div>
-                  </div>
-                ) : isProcessing ? (
-                  <div className="text-center">
-                    <div className="w-24 h-24 bg-blue-500 rounded-full flex items-center justify-center mx-auto">
-                      <Loader2 className="w-10 h-10 text-white animate-spin" />
-                    </div>
-                    <p className="text-blue-400 text-lg font-bold mt-4">
-                      Processing your message...
-                    </p>
-                  </div>
-                ) : isPlaying ? (
-                  <div className="text-center">
-                    <div className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center mx-auto">
-                      <Volume2 className="w-10 h-10 text-white animate-pulse" />
-                    </div>
-                    <p className="text-green-400 text-lg font-bold mt-4">
-                      Your future self is speaking...
-                    </p>
-                    <button
-                      onClick={stopAudioPlayback}
-                      className="mt-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
-                    >
-                      Stop Playback
-                    </button>
-                  </div>
-                ) : audioBlob ? (
-                  <div className="text-center">
-                    <div className="w-24 h-24 bg-primary-aqua rounded-full flex items-center justify-center mx-auto">
-                      <CheckCircle className="w-10 h-10 text-white" />
-                    </div>
-                    <p className="text-primary-aqua text-lg font-bold mt-4">
-                      Ready to send your message
-                    </p>
-                    <button
-                      onClick={processAudio}
-                      className="mt-2 px-4 py-2 bg-primary-aqua hover:bg-primary-aqua/80 text-white rounded-lg transition-colors"
-                    >
-                      Send to Future Self
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={startRecording}
-                    className="w-24 h-24 bg-gradient-to-br from-primary-aqua to-primary-blue rounded-full flex items-center justify-center mx-auto hover:scale-105 transition-transform"
-                  >
-                    <Mic className="w-10 h-10 text-white" />
-                  </button>
-                )}
-              </div>
-              
-              {/* Instructions */}
-              {!isRecording && !isProcessing && !isPlaying && !audioBlob && (
-                <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 mb-6">
-                  <div className="flex items-start gap-3">
-                    <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <span className="text-white text-xs font-bold">ℹ️</span>
-                    </div>
-                    <div className="text-left">
-                      <h4 className="text-blue-400 font-semibold text-sm mb-2 font-heading">How to use voice chat</h4>
-                      <ul className="text-blue-300 text-xs space-y-1 font-body">
-                        <li>• Click the microphone button to start recording</li>
-                        <li>• Speak clearly about your goals and aspirations</li>
-                        <li>• Click "Stop Recording" when you're done</li>
-                        <li>• Send your message to your future self</li>
-                        <li>• Listen to your future self's response</li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-              )}
-              
-              {/* Close Button */}
-              <button
-                onClick={handleVoiceChatModalClose}
-                className="w-full btn btn-outline font-heading"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {showVoiceChatModal && <VoiceChatModal onClose={handleVoiceChatModalClose} futurePhotoUrl={futurePhotoUrl} />}
 
       {/* Main content */}
       <div className="onboarding-content container mx-auto px-4 max-w-2xl">
