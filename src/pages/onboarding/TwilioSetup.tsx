@@ -187,7 +187,7 @@ const TwilioSetup = () => {
 
           {/* Test Call Card */}
           <div className="card">
-            <h3 className="text-xl font-semibold mb-4 font-heading">Test Your Connection</h3>
+            <h3 className="text-xl font-semibold mb-4 font-heading">Test MyFutrSelf</h3>
             <p className="text-white/70 mb-6 font-body">
               Let's make sure everything is working by testing a quick call. This will verify that your future self can reach you successfully.
             </p>
