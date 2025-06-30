@@ -27,9 +27,15 @@ const ClerkProviderWithNavigate = () => {
           colorInputText: 'rgb(255, 255, 255)',
           colorText: 'rgb(255, 255, 255)',
           colorTextSecondary: 'rgb(163, 201, 249)',
-          borderRadius: '1rem'
+          borderRadius: '1rem',
+          // Override border colors globally
+          colorNeutral: 'rgba(255, 255, 255, 0.3)',
+          colorShimmer: 'rgba(255, 255, 255, 0.3)',
+          colorInputBorder: 'rgba(255, 255, 255, 0.3)',
+          colorInputBorderFocus: 'rgba(255, 255, 255, 0.5)',
         },
         elements: {
+          // Main card styling
           card: {
             backgroundColor: 'rgba(16, 26, 47, 0.9)',
             backdropFilter: 'blur(16px)',
@@ -49,68 +55,153 @@ const ClerkProviderWithNavigate = () => {
           headerSubtitle: {
             color: 'rgb(163, 201, 249)'
           },
+          
+          // Social buttons - comprehensive targeting
           socialButtonsBlockButton: {
             backgroundColor: 'rgba(16, 26, 47, 0.8)',
+            border: '1px solid rgba(255, 255, 255, 0.3) !important',
+            borderColor: 'rgba(255, 255, 255, 0.3) !important',
+            color: 'rgb(255, 255, 255)',
+            '&:hover': {
+              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              borderColor: 'rgba(255, 255, 255, 0.5) !important',
+            }
+          },
+          socialButtonsIconButton: {
+            backgroundColor: 'rgba(16, 26, 47, 0.8)',
+            border: '1px solid rgba(255, 255, 255, 0.3) !important',
+            borderColor: 'rgba(255, 255, 255, 0.3) !important',
+            color: 'rgb(255, 255, 255)',
+            '&:hover': {
+              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              borderColor: 'rgba(255, 255, 255, 0.5) !important',
+            }
+          },
+          socialButtonsProviderIcon: {
+            color: 'rgb(255, 255, 255)'
+          },
+          
+          // Form buttons
+          formButtonPrimary: {
+            background: 'linear-gradient(135deg, rgb(36, 210, 211) 0%, rgb(36, 97, 211) 100%)',
             border: '1px solid rgba(255, 255, 255, 0.3)',
             color: 'rgb(255, 255, 255)'
           },
-          formButtonPrimary: {
-            background: 'linear-gradient(135deg, rgb(36, 210, 211) 0%, rgb(36, 97, 211) 100%)',
+          formButtonSecondary: {
+            backgroundColor: 'rgba(16, 26, 47, 0.8)',
+            border: '1px solid rgba(255, 255, 255, 0.3) !important',
             color: 'rgb(255, 255, 255)'
           },
+          
+          // Input fields - comprehensive targeting
           formFieldInput: {
             backgroundColor: 'rgba(16, 26, 47, 0.8)',
             color: 'rgb(255, 255, 255)',
-            border: '1px solid rgba(255, 255, 255, 0.3)'
+            border: '1px solid rgba(255, 255, 255, 0.3) !important',
+            borderColor: 'rgba(255, 255, 255, 0.3) !important',
+            '&:focus': {
+              borderColor: 'rgba(255, 255, 255, 0.5) !important',
+              boxShadow: '0 0 0 1px rgba(255, 255, 255, 0.3)'
+            },
+            '&:hover': {
+              borderColor: 'rgba(255, 255, 255, 0.4) !important'
+            }
           },
-          // Target all input field variations
           formFieldInputShowPasswordButton: {
             color: 'rgba(255, 255, 255, 0.7)'
           },
           formFieldLabel: {
             color: 'rgba(255, 255, 255, 0.9)'
           },
-          // Additional input field selectors for comprehensive coverage
-          'input[type="text"]': {
-            backgroundColor: 'rgba(16, 26, 47, 0.8)',
+          
+          // Comprehensive input targeting with high specificity
+          'input': {
+            backgroundColor: 'rgba(16, 26, 47, 0.8) !important',
             border: '1px solid rgba(255, 255, 255, 0.3) !important',
-            color: 'rgb(255, 255, 255)'
+            borderColor: 'rgba(255, 255, 255, 0.3) !important',
+            color: 'rgb(255, 255, 255) !important',
+            '&:focus': {
+              borderColor: 'rgba(255, 255, 255, 0.5) !important',
+              boxShadow: '0 0 0 1px rgba(255, 255, 255, 0.3) !important'
+            }
+          },
+          'input[type="text"]': {
+            backgroundColor: 'rgba(16, 26, 47, 0.8) !important',
+            border: '1px solid rgba(255, 255, 255, 0.3) !important',
+            borderColor: 'rgba(255, 255, 255, 0.3) !important',
+            color: 'rgb(255, 255, 255) !important'
           },
           'input[type="email"]': {
-            backgroundColor: 'rgba(16, 26, 47, 0.8)',
+            backgroundColor: 'rgba(16, 26, 47, 0.8) !important',
             border: '1px solid rgba(255, 255, 255, 0.3) !important',
-            color: 'rgb(255, 255, 255)'
+            borderColor: 'rgba(255, 255, 255, 0.3) !important',
+            color: 'rgb(255, 255, 255) !important'
           },
           'input[type="password"]': {
-            backgroundColor: 'rgba(16, 26, 47, 0.8)',
+            backgroundColor: 'rgba(16, 26, 47, 0.8) !important',
             border: '1px solid rgba(255, 255, 255, 0.3) !important',
-            color: 'rgb(255, 255, 255)'
+            borderColor: 'rgba(255, 255, 255, 0.3) !important',
+            color: 'rgb(255, 255, 255) !important'
           },
           'input[type="tel"]': {
-            backgroundColor: 'rgba(16, 26, 47, 0.8)',
+            backgroundColor: 'rgba(16, 26, 47, 0.8) !important',
             border: '1px solid rgba(255, 255, 255, 0.3) !important',
-            color: 'rgb(255, 255, 255)'
+            borderColor: 'rgba(255, 255, 255, 0.3) !important',
+            color: 'rgb(255, 255, 255) !important'
           },
-          // Target Clerk-specific input classes
+          
+          // Button targeting
+          'button': {
+            border: '1px solid rgba(255, 255, 255, 0.3) !important',
+            borderColor: 'rgba(255, 255, 255, 0.3) !important',
+            '&:hover': {
+              borderColor: 'rgba(255, 255, 255, 0.5) !important'
+            }
+          },
+          
+          // Clerk-specific selectors
           'input[data-testid]': {
-            backgroundColor: 'rgba(16, 26, 47, 0.8)',
+            backgroundColor: 'rgba(16, 26, 47, 0.8) !important',
             border: '1px solid rgba(255, 255, 255, 0.3) !important',
-            color: 'rgb(255, 255, 255)'
+            borderColor: 'rgba(255, 255, 255, 0.3) !important',
+            color: 'rgb(255, 255, 255) !important'
           },
-          // Target all input elements within forms
           'form input': {
+            backgroundColor: 'rgba(16, 26, 47, 0.8) !important',
+            border: '1px solid rgba(255, 255, 255, 0.3) !important',
+            borderColor: 'rgba(255, 255, 255, 0.3) !important',
+            color: 'rgb(255, 255, 255) !important'
+          },
+          'form button': {
+            border: '1px solid rgba(255, 255, 255, 0.3) !important',
+            borderColor: 'rgba(255, 255, 255, 0.3) !important'
+          },
+          
+          // Additional Clerk elements
+          phoneInputBox: {
             backgroundColor: 'rgba(16, 26, 47, 0.8)',
             border: '1px solid rgba(255, 255, 255, 0.3) !important',
+            borderColor: 'rgba(255, 255, 255, 0.3) !important',
             color: 'rgb(255, 255, 255)'
           },
-          footerActionLink: {
-            color: 'rgb(36, 210, 211)'
+          otpCodeFieldInput: {
+            backgroundColor: 'rgba(16, 26, 47, 0.8)',
+            border: '1px solid rgba(255, 255, 255, 0.3) !important',
+            borderColor: 'rgba(255, 255, 255, 0.3) !important',
+            color: 'rgb(255, 255, 255)'
           },
+          
+          // Dividers and separators
           dividerLine: {
             backgroundColor: 'rgba(255, 255, 255, 0.3)'
           },
           dividerText: {
             color: 'rgba(255, 255, 255, 0.7)'
+          },
+          
+          // Footer and links
+          footerActionLink: {
+            color: 'rgb(36, 210, 211)'
           },
           formFieldAction: {
             color: 'rgb(36, 210, 211)'
@@ -118,6 +209,8 @@ const ClerkProviderWithNavigate = () => {
           identityPreviewEditButton: {
             color: 'rgb(36, 210, 211)'
           },
+          
+          // Status messages
           formFieldSuccessText: {
             color: 'rgb(34, 197, 94)'
           },
@@ -129,16 +222,25 @@ const ClerkProviderWithNavigate = () => {
             border: '1px solid rgba(239, 68, 68, 0.3)',
             color: 'rgb(239, 68, 68)'
           },
-          phoneInputBox: {
-            backgroundColor: 'rgba(16, 26, 47, 0.8)',
-            border: '1px solid rgba(255, 255, 255, 0.3)',
-            color: 'rgb(255, 255, 255)'
+          
+          // Comprehensive targeting using CSS selectors with high specificity
+          '[data-localization-key]': {
+            border: '1px solid rgba(255, 255, 255, 0.3) !important',
+            borderColor: 'rgba(255, 255, 255, 0.3) !important'
           },
-          otpCodeFieldInput: {
-            backgroundColor: 'rgba(16, 26, 47, 0.8)',
-            border: '1px solid rgba(255, 255, 255, 0.3)',
-            color: 'rgb(255, 255, 255)'
+          '[role="button"]': {
+            border: '1px solid rgba(255, 255, 255, 0.3) !important',
+            borderColor: 'rgba(255, 255, 255, 0.3) !important'
+          },
+          // Target any div that might be styled as a button
+          'div[role="button"]': {
+            border: '1px solid rgba(255, 255, 255, 0.3) !important',
+            borderColor: 'rgba(255, 255, 255, 0.3) !important'
           }
+        },
+        // Additional global CSS to ensure coverage
+        layout: {
+          shimmer: 'rgba(255, 255, 255, 0.3)'
         }
       }}
       navigate={(to) => navigate(to)}
