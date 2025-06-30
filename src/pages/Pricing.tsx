@@ -225,6 +225,11 @@ const Pricing = () => {
         </div>
       </div>
 
+      {/* Gradient Blur Transition */}
+      <div className="relative h-32 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-primary-aqua/5 via-primary-blue/3 to-transparent" />
+        <div className="absolute inset-0 backdrop-blur-sm bg-gradient-to-b from-transparent via-bg-primary/20 to-bg-primary/40" />
+      </div>
 
       {/* Compact Pricing Cards */}
       <div className="container mx-auto px-4 pt-8 pb-16">
