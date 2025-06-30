@@ -1,7 +1,6 @@
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { validateRequest } from 'https://esm.sh/twilio@5.3.4'
-import { VoiceResponse } from 'https://esm.sh/twilio@5.3.4/lib/twiml/VoiceResponse'
+import twilio, { validateRequest } from 'https://esm.sh/twilio@5.3.4'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -332,7 +331,7 @@ async function generateSpeech(
 
 // Generate TwiML response using Twilio VoiceResponse
 function generateTwiML(audioUrl: string, webhookUrl: string, userId: string): string {
-  const twiml = new VoiceResponse();
+  const twiml = new twilio.twiml.VoiceResponse();
   
   // Play the AI-generated audio
   twiml.play({}, audioUrl);
