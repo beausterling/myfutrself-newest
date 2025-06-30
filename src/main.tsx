@@ -108,10 +108,42 @@ const ClerkProviderWithNavigate = () => {
             }
           },
           formFieldInputShowPasswordButton: {
-            color: 'rgba(255, 255, 255, 0.7)'
+            color: 'rgba(255, 255, 255, 0.7)',
+            border: 'none !important',
+            borderColor: 'transparent !important',
+            backgroundColor: 'transparent !important',
+            '&:hover': {
+              backgroundColor: 'rgba(255, 255, 255, 0.1) !important',
+              border: 'none !important',
+              borderColor: 'transparent !important'
+            }
           },
           formFieldLabel: {
             color: 'rgba(255, 255, 255, 0.9)'
+          },
+          
+          // Icon buttons and utility buttons - remove borders
+          formFieldAction: {
+            color: 'rgb(36, 210, 211)',
+            border: 'none !important',
+            borderColor: 'transparent !important',
+            backgroundColor: 'transparent !important',
+            '&:hover': {
+              backgroundColor: 'rgba(255, 255, 255, 0.1) !important',
+              border: 'none !important',
+              borderColor: 'transparent !important'
+            }
+          },
+          identityPreviewEditButton: {
+            color: 'rgb(36, 210, 211)',
+            border: 'none !important',
+            borderColor: 'transparent !important',
+            backgroundColor: 'transparent !important',
+            '&:hover': {
+              backgroundColor: 'rgba(255, 255, 255, 0.1) !important',
+              border: 'none !important',
+              borderColor: 'transparent !important'
+            }
           },
           
           // Comprehensive input targeting with high specificity
@@ -159,6 +191,42 @@ const ClerkProviderWithNavigate = () => {
             }
           },
           
+          // Override for small icon buttons - remove borders
+          'button[type="button"]:not([class*="primary"]):not([class*="secondary"])': {
+            border: 'none !important',
+            borderColor: 'transparent !important',
+            backgroundColor: 'transparent !important',
+            '&:hover': {
+              backgroundColor: 'rgba(255, 255, 255, 0.1) !important',
+              border: 'none !important',
+              borderColor: 'transparent !important'
+            }
+          },
+          
+          // Target buttons with specific roles or data attributes that are utility buttons
+          'button[aria-label]': {
+            border: 'none !important',
+            borderColor: 'transparent !important',
+            backgroundColor: 'transparent !important',
+            '&:hover': {
+              backgroundColor: 'rgba(255, 255, 255, 0.1) !important',
+              border: 'none !important',
+              borderColor: 'transparent !important'
+            }
+          },
+          
+          // Target small buttons (likely icon buttons)
+          'button[style*="width"]': {
+            border: 'none !important',
+            borderColor: 'transparent !important',
+            backgroundColor: 'transparent !important',
+            '&:hover': {
+              backgroundColor: 'rgba(255, 255, 255, 0.1) !important',
+              border: 'none !important',
+              borderColor: 'transparent !important'
+            }
+          },
+          
           // Clerk-specific selectors
           'input[data-testid]': {
             backgroundColor: 'rgba(16, 26, 47, 0.8) !important',
@@ -201,12 +269,6 @@ const ClerkProviderWithNavigate = () => {
           
           // Footer and links
           footerActionLink: {
-            color: 'rgb(36, 210, 211)'
-          },
-          formFieldAction: {
-            color: 'rgb(36, 210, 211)'
-          },
-          identityPreviewEditButton: {
             color: 'rgb(36, 210, 211)'
           },
           
