@@ -194,7 +194,7 @@ const Landing = () => {
 
       {/* Hero Section */}
       <section className="relative overflow-hidden pt-32">
-        <div className="container mx-auto px-4 pb-20">
+        <div className="container mx-auto px-4 pb-8">
           <motion.div className="text-center max-w-5xl mx-auto" {...fadeInUp}>
             <motion.div
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-lg border border-white/20 mb-8"
