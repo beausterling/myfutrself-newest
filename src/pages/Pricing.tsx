@@ -180,6 +180,19 @@ const Pricing = () => {
     }
   };
 
+  const handleChoosePlan = () => {
+    console.log('🎯 Plan selection:', selectedPlan, 'Billing:', billingCycle);
+    
+    if (selectedPlan === 'free') {
+      // For free plan, use existing CTA logic
+      handleCtaClick();
+    } else {
+      // For paid plans (starter/premium), redirect to checkout
+      const checkoutUrl = `/checkout?plan=${selectedPlan}&billing=${billingCycle}`;
+      console.log('🔄 Redirecting to checkout:', checkoutUrl);
+      navigate(checkoutUrl);
+    }
+  };
   return (
     <div className="min-h-screen bg-gradient-to-br from-bg-primary via-bg-secondary to-bg-primary">
       {/* Hero Section */}
@@ -365,7 +378,10 @@ const Pricing = () => {
             </div>
 
             <div className="text-center">
-              <button className="btn btn-primary text-lg px-8 py-4 font-heading w-full sm:w-auto">
+              <button 
+                onClick={handleChoosePlan}
+                className="btn btn-primary text-lg px-8 py-4 font-heading w-full sm:w-auto"
+              >
                 {selectedPlan === 'free' ? 'Get Started Free' : `Choose ${plans[selectedPlan as keyof typeof plans].name}`}
               </button>
             </div>
