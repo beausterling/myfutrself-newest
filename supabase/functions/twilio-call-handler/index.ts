@@ -570,7 +570,7 @@ serve(async (req) => {
         params[key] = stringValue;
       }
 
-      // Get user_id from query parameters and add to params for signature validation
+      // Get user_id from query parameters (but do NOT add to params - query params are part of the URL, not the POST body)
       const userId = url.searchParams.get('user_id');
       if (!userId) {
         logWithContext('ERROR', 'Missing user_id in webhook request', requestId);
