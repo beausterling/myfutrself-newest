@@ -5,6 +5,7 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-twilio-signature',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Max-Age': '86400', // Cache preflight for 24 hours
 }
 
 interface InitiateCallRequest {
@@ -584,12 +585,24 @@ serve(async (req) => {
         params[key] = value;
       }
 
+      // Reconstruct the exact HTTPS URL that Twilio used to sign the request
+      const host = req.headers.get('x-forwarded-host') || req.headers.get('host');
+      if (!host) {
+        logWithContext('ERROR', 'Missing host header for URL reconstruction', requestId);
+        return new Response('Missing host header', { 
+          status: 400,
+          headers: { 'Content-Type': 'text/plain' }
+        });
+      }
+      
+      // Construct the base URL without query parameters for signature validation
+      const baseUrl = `https://${host}${url.pathname}`;
+      
       // Validate Twilio signature
-      const fullUrl = req.url; // Use the full URL including query parameters
       const isValidSignature = await validateTwilioSignature(
         twilioAuthToken,
         twilioSignature,
-        fullUrl,
+        baseUrl,
         params,
         requestId
       );
@@ -597,7 +610,7 @@ serve(async (req) => {
       if (!isValidSignature) {
         logWithContext('ERROR', 'Invalid Twilio signature', requestId, {
           providedSignature: twilioSignature.substring(0, 20) + '...',
-          url: fullUrl,
+          url: baseUrl,
           paramsCount: Object.keys(params).length
         });
         return new Response('Invalid Twilio signature', { 
