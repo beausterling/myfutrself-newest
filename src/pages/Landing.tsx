@@ -230,6 +230,8 @@ const Landing = () => {
                   — Dr. Hal Hershfield, UCLA Behavioral Scientist
                 </div>
               </motion.div>
+          </motion.div>
+        </div>
 
         {/* Floating Elements - optimized with transform-gpu */}
         <div className="absolute top-20 left-10 w-20 h-20 rounded-full bg-primary-aqua/20 blur-xl transform-gpu" style={{ animation: 'float 6s ease-in-out infinite' }}></div>
