@@ -20,7 +20,6 @@ import DashboardLayout from './layouts/DashboardLayout';
 import Landing from './pages/Landing';
 import Dashboard from './pages/Dashboard';
 import Onboarding from './pages/Onboarding';
-import Waitlist from './pages/Waitlist';
 import Pricing from './pages/Pricing';
 import NotFound from './pages/NotFound';
 import LoadingScreen from './components/ui/LoadingScreen';
@@ -574,7 +573,6 @@ function App() {
           </Route>
           
           {/* Waitlist route */}
-          <Route path="/waitlist" element={<Waitlist />} />
           
           {/* Pricing route */}
           <Route path="/pricing" element={<Pricing />} />

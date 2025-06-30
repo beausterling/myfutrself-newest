@@ -87,9 +87,9 @@ const Header = ({ theme, toggleTheme }: { theme: string; toggleTheme: () => void
             <Link to="/pricing" className="text-white/80 hover:text-white transition-colors font-body">
               Pricing
             </Link>
-            <Link to="/waitlist">
+            <Link to="/">
               <button className="btn btn-primary font-heading">
-                Join Waitlist
+                Get Started
               </button>
             </Link>
           </SignedOut>
@@ -182,11 +182,11 @@ const Header = ({ theme, toggleTheme }: { theme: string; toggleTheme: () => void
                     className="block p-4 bg-white/5 rounded-xl border border-white/10 text-white hover:bg-white/10 transition-colors font-body"
                     onClick={() => setIsMenuOpen(false)}
                   >
-                    💰 Pricing
+                    <span className="text-lg">💰</span> Pricing
                   </Link>
-                  <Link to="/waitlist" onClick={() => setIsMenuOpen(false)}>
+                  <Link to="/" onClick={() => setIsMenuOpen(false)}>
                     <button className="w-full btn btn-primary font-heading">
-                      🚀 Join Waitlist
+                      🚀 Get Started
                     </button>
                   </Link>
                   

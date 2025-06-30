@@ -155,7 +155,7 @@ const Pricing = () => {
   const handleCtaClick = () => {
     if (!user) {
       // Not signed in - redirect to sign up
-      navigate('/waitlist');
+      navigate('/');
     } else if (isOnboardingComplete === false) {
       // Signed in but onboarding not complete - redirect to dashboard (which will redirect to onboarding)
       navigate('/dashboard');
@@ -164,7 +164,7 @@ const Pricing = () => {
       navigate('/dashboard');
     } else {
       // Unknown state - default to waitlist
-      navigate('/waitlist');
+      navigate('/');
     }
   };
 
