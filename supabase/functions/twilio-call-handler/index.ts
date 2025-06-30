@@ -424,7 +424,7 @@ function generateTwiML(audioUrl: string, webhookUrl: string, userId: string): st
 async function initiateCall(
   toNumber: string,
   fromNumber: string,
-  webhookUrl: string,
+  supabaseUrl: string,
   userId: string,
   twilioAccountSid: string,
   twilioAuthToken: string,
@@ -439,6 +439,15 @@ async function initiateCall(
   try {
     // Create Twilio client using basic auth
     const auth = btoa(`${twilioAccountSid}:${twilioAuthToken}`);
+
+    // Construct the webhook URL using the Supabase URL
+    // This ensures the x-deno-subhost header will be set correctly
+    const webhookUrl = `${supabaseUrl}/functions/v1/twilio-call-handler/twiml-webhook?user_id=${userId}`;
+    
+    logWithContext('INFO', 'Using webhook URL for Twilio', requestId, { 
+      webhookUrl,
+      userId
+    });
     
     const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Calls.json`, {
       method: 'POST',
@@ -449,7 +458,7 @@ async function initiateCall(
       body: new URLSearchParams({
         To: toNumber,
         From: fromNumber,
-        Url: `${webhookUrl}?user_id=${userId}`,
+        Url: webhookUrl,
         Method: 'POST'
       })
     });
@@ -536,14 +545,11 @@ Deno.serve(async (req) => {
       }
 
       // Construct webhook URL for TwiML responses
-      // Use the full URL including the host that Twilio will call
-      const webhookUrl = `${req.headers.get('x-forwarded-proto') || 'https'}://${req.headers.get('x-forwarded-host') || req.headers.get('host')}/functions/v1/twilio-call-handler/twiml-webhook`;
-
       // Initiate the call
       const callSid = await initiateCall(
         requestBody.to_phone_number,
         twilioFromNumber,
-        webhookUrl,
+        supabaseUrl,
         requestBody.user_id,
         twilioAccountSid,
         twilioAuthToken,
@@ -670,9 +676,8 @@ Deno.serve(async (req) => {
       // Generate speech from AI response
       const audioUrl = await generateSpeech(aiResponseText, voicePreference, supabaseUrl, supabaseAnonKey, requestId);
 
-      // Generate TwiML response
-      // Use the full URL including the host that Twilio will call
-      const webhookUrl = `${req.headers.get('x-forwarded-proto') || 'https'}://${req.headers.get('x-forwarded-host') || req.headers.get('host')}/functions/v1/twilio-call-handler/twiml-webhook`;
+      // Generate TwiML response with the correct webhook URL
+      const webhookUrl = `${supabaseUrl}/functions/v1/twilio-call-handler/twiml-webhook`;
       const twimlResponse = generateTwiML(audioUrl, webhookUrl, userId);
 
       logWithContext('INFO', 'TwiML response generated successfully', requestId, {
