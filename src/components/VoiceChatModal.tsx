@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, Mic, Loader2, Volume2, CheckCircle, Headphones } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { X, Mic, Loader2, Volume2, CheckCircle, Headphones, AlertCircle } from 'lucide-react';
 import { useUser, useAuth } from '@clerk/clerk-react';
 
 interface VoiceChatModalProps {
@@ -21,10 +22,9 @@ const VoiceChatModal = ({ onClose, futurePhotoUrl }: VoiceChatModalProps) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
-  const [aiResponseAudio, setAiResponseAudio] = useState<string | null>(null);
-  const [aiResponseText, setAiResponseText] = useState<string | null>(null);
   const [conversation, setConversation] = useState<ConversationMessage[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [initialGreetingPlayed, setInitialGreetingPlayed] = useState(false);
   
   // Refs for audio recording and playback
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -32,6 +32,7 @@ const VoiceChatModal = ({ onClose, futurePhotoUrl }: VoiceChatModalProps) => {
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const conversationEndRef = useRef<HTMLDivElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   // Scroll to bottom of conversation when new messages are added
   useEffect(() => {
@@ -62,8 +63,98 @@ const VoiceChatModal = ({ onClose, futurePhotoUrl }: VoiceChatModalProps) => {
       if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
         audioContextRef.current.close();
       }
+
+      // Stop any active media stream
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
     };
   }, [isRecording]);
+
+  // Play initial greeting when modal opens
+  useEffect(() => {
+    if (!initialGreetingPlayed) {
+      playInitialGreeting();
+    }
+  }, [initialGreetingPlayed]);
+
+  // Play initial greeting
+  const playInitialGreeting = async () => {
+    if (!user?.id || initialGreetingPlayed) return;
+    
+    try {
+      setIsProcessing(true);
+      console.log('🔄 Getting initial greeting...');
+
+      // Get token for authentication
+      const token = await getToken({ template: 'supabase' });
+      if (!token) {
+        throw new Error('No authentication token available');
+      }
+
+      // Call the in-app-voice-chat Edge Function with a special flag for initial greeting
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      if (!supabaseUrl) {
+        throw new Error('Supabase URL not found in environment variables');
+      }
+
+      console.log('🔄 Calling in-app-voice-chat Edge Function for initial greeting...');
+      const response = await fetch(`${supabaseUrl}/functions/v1/in-app-voice-chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          messageText: "Hello, I'd like to talk to my future self."
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('❌ Edge Function error:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData
+        });
+        throw new Error(errorData.error || `Voice chat failed: ${response.status} ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ Initial greeting received:', {
+        success: result.success,
+        hasAudioResponse: !!result.audioResponse,
+        hasTextResponse: !!result.textResponse
+      });
+
+      if (!result.success) {
+        throw new Error(result.error || 'Voice chat failed');
+      }
+
+      // Update conversation history
+      const userText = "Hello, I'd like to talk to my future self.";
+      const aiText = result.textResponse || 'Hello! I am your future self. How can I help you today?';
+      
+      setConversation([
+        { role: 'user', text: userText },
+        { role: 'ai', text: aiText, audio: result.audioResponse }
+      ]);
+
+      // Auto-play the response
+      if (result.audioResponse) {
+        await playAudioResponse(result.audioResponse);
+      }
+
+      setInitialGreetingPlayed(true);
+    } catch (error) {
+      console.error('❌ Error getting initial greeting:', error);
+      setError(error instanceof Error ? error.message : 'Failed to start conversation. Please try again.');
+      setInitialGreetingPlayed(true); // Mark as played even on error to avoid infinite retries
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   // Start recording audio
   const startRecording = async () => {
@@ -88,6 +179,7 @@ const VoiceChatModal = ({ onClose, futurePhotoUrl }: VoiceChatModalProps) => {
       
       console.log('🎤 Requesting microphone access');
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
       
       // Use audio/webm for better browser compatibility and smaller file sizes
       const options = { mimeType: 'audio/webm' };
@@ -117,15 +209,21 @@ const VoiceChatModal = ({ onClose, futurePhotoUrl }: VoiceChatModalProps) => {
         setAudioBlob(blob);
         
         // Stop stream tracks
-        stream.getTracks().forEach(track => {
-          track.stop();
-          console.log(`📡 Stopped track: ${track.kind}`);
-        });
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => {
+            track.stop();
+            console.log(`📡 Stopped track: ${track.kind}`);
+          });
+          streamRef.current = null;
+        }
         
         // Clear media recorder reference
         mediaRecorderRef.current = null;
         setIsRecording(false);
         console.log('✅ Recording cleanup completed');
+        
+        // Automatically process the audio when recording stops
+        processAudio(blob);
       };
 
       recorder.onerror = (event) => {
@@ -133,7 +231,10 @@ const VoiceChatModal = ({ onClose, futurePhotoUrl }: VoiceChatModalProps) => {
         setError('Recording failed. Please try again.');
         
         // Clean up on error
-        stream.getTracks().forEach(track => track.stop());
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+          streamRef.current = null;
+        }
         setIsRecording(false);
         mediaRecorderRef.current = null;
         if (recordingIntervalRef.current) {
@@ -195,8 +296,10 @@ const VoiceChatModal = ({ onClose, futurePhotoUrl }: VoiceChatModalProps) => {
   };
 
   // Process audio and get AI response
-  const processAudio = async () => {
-    if (!audioBlob || !user?.id) {
+  const processAudio = async (blob?: Blob) => {
+    const audioToProcess = blob || audioBlob;
+    
+    if (!audioToProcess || !user?.id) {
       console.error('❌ No audio blob or user ID available');
       setError('No audio recording available. Please try again.');
       return;
@@ -208,7 +311,7 @@ const VoiceChatModal = ({ onClose, futurePhotoUrl }: VoiceChatModalProps) => {
 
       // Convert blob to base64
       const reader = new FileReader();
-      reader.readAsDataURL(audioBlob);
+      reader.readAsDataURL(audioToProcess);
       
       reader.onloadend = async () => {
         const base64Audio = reader.result as string;
@@ -271,14 +374,13 @@ const VoiceChatModal = ({ onClose, futurePhotoUrl }: VoiceChatModalProps) => {
           { role: 'ai', text: aiText, audio: result.audioResponse }
         ]);
 
-        // Set AI response for immediate playback
-        setAiResponseText(aiText);
-        setAiResponseAudio(result.audioResponse);
-
         // Auto-play the response
         if (result.audioResponse) {
-          playAudioResponse(result.audioResponse);
+          await playAudioResponse(result.audioResponse);
         }
+        
+        // Clear the audio blob for next recording
+        setAudioBlob(null);
       };
 
     } catch (error) {
@@ -286,59 +388,67 @@ const VoiceChatModal = ({ onClose, futurePhotoUrl }: VoiceChatModalProps) => {
       setError(error instanceof Error ? error.message : 'Failed to process audio. Please try again.');
     } finally {
       setIsProcessing(false);
-      setAudioBlob(null); // Clear the audio blob for next recording
     }
   };
 
   // Play audio response
-  const playAudioResponse = async (base64Audio: string) => {
-    try {
-      setIsPlaying(true);
-      console.log('🔊 Playing AI response audio...');
+  const playAudioResponse = async (base64Audio: string): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      try {
+        setIsPlaying(true);
+        console.log('🔊 Playing AI response audio...');
 
-      // Convert base64 to ArrayBuffer
-      const base64Data = base64Audio.split(',')[1];
-      const binaryString = atob(base64Data);
-      const bytes = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-      }
+        // Convert base64 to ArrayBuffer
+        const base64Data = base64Audio.split(',')[1];
+        const binaryString = atob(base64Data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
 
-      // Create AudioContext if it doesn't exist
-      if (!audioContextRef.current) {
-        const newAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-        audioContextRef.current = newAudioContext;
-      }
+        // Create AudioContext if it doesn't exist
+        if (!audioContextRef.current) {
+          const newAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+          audioContextRef.current = newAudioContext;
+        }
 
-      const context = audioContextRef.current;
-      
-      // Decode audio data
-      const audioBuffer = await context.decodeAudioData(bytes.buffer);
-      
-      // Create source node
-      const source = context.createBufferSource();
-      source.buffer = audioBuffer;
-      source.connect(context.destination);
-      
-      // Set up event handlers
-      source.onended = () => {
-        console.log('✅ Audio playback ended');
+        const context = audioContextRef.current;
+        
+        // Decode audio data
+        context.decodeAudioData(bytes.buffer, (audioBuffer) => {
+          // Create source node
+          const source = context.createBufferSource();
+          source.buffer = audioBuffer;
+          source.connect(context.destination);
+          
+          // Set up event handlers
+          source.onended = () => {
+            console.log('✅ Audio playback ended');
+            setIsPlaying(false);
+            audioSourceRef.current = null;
+            resolve();
+          };
+          
+          // Store source for potential stopping
+          audioSourceRef.current = source;
+          
+          // Start playback
+          source.start(0);
+          console.log('✅ Audio playback started');
+        }, (error) => {
+          console.error('❌ Error decoding audio data:', error);
+          setError('Failed to play audio response. Please try again.');
+          setIsPlaying(false);
+          reject(error);
+        });
+
+      } catch (error) {
+        console.error('❌ Error playing audio:', error);
+        setError('Failed to play audio response. Please try again.');
         setIsPlaying(false);
-        audioSourceRef.current = null;
-      };
-      
-      // Store source for potential stopping
-      audioSourceRef.current = source;
-      
-      // Start playback
-      source.start(0);
-      console.log('✅ Audio playback started');
-
-    } catch (error) {
-      console.error('❌ Error playing audio:', error);
-      setError('Failed to play audio response. Please try again.');
-      setIsPlaying(false);
-    }
+        reject(error);
+      }
+    });
   };
 
   // Stop audio playback
@@ -352,8 +462,19 @@ const VoiceChatModal = ({ onClose, futurePhotoUrl }: VoiceChatModalProps) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-bg-primary border border-white/20 rounded-2xl p-6 max-w-md w-full relative">
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+    >
+      <motion.div 
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
+        transition={{ type: "spring", damping: 25, stiffness: 300 }}
+        className="bg-bg-primary border border-white/20 rounded-2xl p-6 max-w-md w-full relative"
+      >
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-white/60 hover:text-white transition-colors"
@@ -363,7 +484,12 @@ const VoiceChatModal = ({ onClose, futurePhotoUrl }: VoiceChatModalProps) => {
         
         <div className="text-center">
           {/* Header with Future Self Image */}
-          <div className="mb-4 flex flex-col items-center">
+          <motion.div 
+            initial={{ y: -20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.1 }}
+            className="mb-4 flex flex-col items-center"
+          >
             {futurePhotoUrl ? (
               <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-primary-aqua mb-2">
                 <img 
@@ -379,34 +505,49 @@ const VoiceChatModal = ({ onClose, futurePhotoUrl }: VoiceChatModalProps) => {
             )}
             <h3 className="text-2xl font-bold mb-1 font-heading">Talk to Your Future Self</h3>
             <p className="text-white/70 text-sm font-body">
-              {isRecording ? 'Recording in progress...' : 
+              {isRecording ? 'I\'m listening...' : 
                isProcessing ? 'Processing your message...' : 
                isPlaying ? 'Your future self is speaking...' :
-               audioBlob ? 'Ready to send your message' :
                'Click the microphone to start speaking'}
             </p>
-          </div>
+          </motion.div>
           
           {/* Error Display */}
           {error && (
-            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl">
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl"
+            >
               <div className="flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
                 <p className="text-red-400 text-sm font-body">{error}</p>
                 <button
                   onClick={() => setError(null)}
-                  className="text-red-300 text-xs underline hover:text-red-200 font-body"
+                  className="text-red-300 text-xs underline hover:text-red-200 font-body ml-auto"
                 >
                   Dismiss
                 </button>
               </div>
-            </div>
+            </motion.div>
           )}
           
           {/* Conversation History */}
           {conversation.length > 0 && (
-            <div className="mb-6 max-h-60 overflow-y-auto bg-white/5 rounded-xl p-4 border border-white/10 text-left">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="mb-6 max-h-60 overflow-y-auto bg-white/5 rounded-xl p-4 border border-white/10 text-left"
+            >
               {conversation.map((message, index) => (
-                <div key={index} className={`mb-3 ${message.role === 'user' ? 'pl-2' : 'pl-4'}`}>
+                <motion.div 
+                  key={index} 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className={`mb-3 ${message.role === 'user' ? 'pl-2' : 'pl-4'}`}
+                >
                   <div className={`flex items-start gap-2 ${message.role === 'user' ? '' : 'border-l-2 border-primary-aqua'}`}>
                     <div className={`p-2 rounded-lg ${message.role === 'user' ? 'bg-white/10' : 'bg-primary-aqua/10'} max-w-[90%]`}>
                       <p className={`text-sm font-body ${message.role === 'user' ? 'text-white/80' : 'text-white'}`}>
@@ -423,14 +564,19 @@ const VoiceChatModal = ({ onClose, futurePhotoUrl }: VoiceChatModalProps) => {
                       </button>
                     )}
                   </div>
-                </div>
+                </motion.div>
               ))}
               <div ref={conversationEndRef} />
-            </div>
+            </motion.div>
           )}
           
           {/* Recording UI */}
-          <div className="mb-6">
+          <motion.div 
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="mb-6"
+          >
             {isRecording ? (
               <div className="text-center space-y-4">
                 <div className="w-24 h-24 bg-red-500 rounded-full flex items-center justify-center mx-auto animate-pulse">
@@ -463,41 +609,30 @@ const VoiceChatModal = ({ onClose, futurePhotoUrl }: VoiceChatModalProps) => {
                 <p className="text-green-400 text-lg font-bold mt-4">
                   Your future self is speaking...
                 </p>
-                <button
-                  onClick={stopAudioPlayback}
-                  className="mt-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
-                >
-                  Stop Playback
-                </button>
-              </div>
-            ) : audioBlob ? (
-              <div className="text-center">
-                <div className="w-24 h-24 bg-primary-aqua rounded-full flex items-center justify-center mx-auto">
-                  <CheckCircle className="w-10 h-10 text-white" />
-                </div>
-                <p className="text-primary-aqua text-lg font-bold mt-4">
-                  Ready to send your message
-                </p>
-                <button
-                  onClick={processAudio}
-                  className="mt-2 px-4 py-2 bg-primary-aqua hover:bg-primary-aqua/80 text-white rounded-lg transition-colors"
-                >
-                  Send to Future Self
-                </button>
               </div>
             ) : (
               <button
                 onClick={startRecording}
-                className="w-24 h-24 bg-gradient-to-br from-primary-aqua to-primary-blue rounded-full flex items-center justify-center mx-auto hover:scale-105 transition-transform"
+                disabled={isPlaying}
+                className={`w-24 h-24 rounded-full flex items-center justify-center mx-auto transition-all duration-300 ${
+                  isPlaying 
+                    ? 'bg-gray-500 cursor-not-allowed' 
+                    : 'bg-gradient-to-br from-primary-aqua to-primary-blue hover:scale-105'
+                }`}
               >
                 <Mic className="w-10 h-10 text-white" />
               </button>
             )}
-          </div>
+          </motion.div>
           
           {/* Instructions */}
-          {!isRecording && !isProcessing && !isPlaying && !audioBlob && (
-            <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 mb-6">
+          {!isRecording && !isProcessing && !isPlaying && conversation.length === 0 && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4 }}
+              className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 mb-6"
+            >
               <div className="flex items-start gap-3">
                 <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
                   <span className="text-white text-xs font-bold">ℹ️</span>
@@ -506,26 +641,29 @@ const VoiceChatModal = ({ onClose, futurePhotoUrl }: VoiceChatModalProps) => {
                   <h4 className="text-blue-400 font-semibold text-sm mb-2 font-heading">How to use voice chat</h4>
                   <ul className="text-blue-300 text-xs space-y-1 font-body">
                     <li>• Click the microphone button to start recording</li>
-                    <li>• Speak clearly about your goals and aspirations</li>
-                    <li>• Click "Stop Recording" when you're done</li>
-                    <li>• Send your message to your future self</li>
-                    <li>• Listen to your future self's response</li>
+                    <li>• Speak clearly about your goals and challenges</li>
+                    <li>• Recording will automatically process when you stop</li>
+                    <li>• Your future self will respond with guidance</li>
+                    <li>• Continue the conversation by clicking the mic again</li>
                   </ul>
                 </div>
               </div>
-            </div>
+            </motion.div>
           )}
           
           {/* Close Button */}
-          <button
+          <motion.button
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
             onClick={onClose}
             className="w-full btn btn-outline font-heading"
           >
             Close
-          </button>
+          </motion.button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };
 
