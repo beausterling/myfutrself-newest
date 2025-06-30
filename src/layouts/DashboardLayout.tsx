@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom';
-import { UserButton } from '@clerk/clerk-react';
-import { Menu, Home, Settings, User, BarChart3, Sun, Moon } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { UserButton, useUser } from '@clerk/clerk-react';
+import { Menu, Home, Settings, User, BarChart3, Sun, Moon, X, DollarSign } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 interface DashboardLayoutProps {
@@ -10,7 +11,9 @@ interface DashboardLayoutProps {
 
 const DashboardLayout = ({ theme, toggleTheme }: DashboardLayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const { user } = useUser();
 
   // Handle scroll effect for blur
   useEffect(() => {
@@ -27,6 +30,10 @@ const DashboardLayout = ({ theme, toggleTheme }: DashboardLayoutProps) => {
     setSidebarOpen(!sidebarOpen);
   };
 
+  const toggleMenu = () => {
+    setIsMenuOpen(!isMenuOpen);
+  };
+
   return (
     <div className="flex h-screen bg-gradient-to-br from-bg-primary to-bg-secondary">
       {/* Blur effect overlay */}
@@ -36,84 +43,143 @@ const DashboardLayout = ({ theme, toggleTheme }: DashboardLayoutProps) => {
           : 'backdrop-filter backdrop-blur-0'
       }`} />
       
-      {/* Mobile sidebar backdrop */}
-      {sidebarOpen && (
-        <div 
-          className="fixed inset-0 z-20 bg-black/50 lg:hidden"
-          onClick={toggleSidebar}
-        />
-      )}
-
-      {/* Sidebar */}
-      <aside className={`
-        fixed inset-y-0 left-0 z-30 w-64 transform bg-white/5 backdrop-blur-lg border-r border-white/10
-        transition-transform duration-300 ease-in-out lg:static lg:translate-x-0
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
-        <div className="flex items-center justify-between h-16 px-4 border-b border-white/10">
-          <span className="text-xl font-semibold text-white font-heading">My Future Self</span>
-          <button 
-            onClick={toggleSidebar}
-            className="p-1 rounded-md lg:hidden hover:bg-white/10"
-          >
-            <Menu size={20} className="text-white" />
-          </button>
-        </div>
-        
-        <nav className="px-2 py-4">
-          <ul className="space-y-1">
-            <li>
-              <a href="/dashboard" className="flex items-center px-4 py-2 text-white/70 rounded-md hover:bg-white/10 hover:text-white transition-colors">
-                <Home className="w-5 h-5 mr-3" />
-                <span>Dashboard</span>
-              </a>
-            </li>
-            <li>
-              <a href="/dashboard/progress" className="flex items-center px-4 py-2 text-white/70 rounded-md hover:bg-white/10 hover:text-white transition-colors">
-                <BarChart3 className="w-5 h-5 mr-3" />
-                <span>Progress</span>
-              </a>
-            </li>
-            <li>
-              <a href="/dashboard/profile" className="flex items-center px-4 py-2 text-white/70 rounded-md hover:bg-white/10 hover:text-white transition-colors">
-                <User className="w-5 h-5 mr-3" />
-                <span>Profile</span>
-              </a>
-            </li>
-            <li>
-              <a href="/dashboard/settings" className="flex items-center px-4 py-2 text-white/70 rounded-md hover:bg-white/10 hover:text-white transition-colors">
-                <Settings className="w-5 h-5 mr-3" />
-                <span>Settings</span>
-              </a>
-            </li>
-            <li>
-              <button
-                onClick={toggleTheme}
-                className="w-full flex items-center px-4 py-2 text-white/70 rounded-md hover:bg-white/10 hover:text-white transition-colors"
-              >
-                {theme === 'light' ? (
-                  <>
-                    <Moon className="w-5 h-5 mr-3" />
-                    <span>Dark Mode</span>
-                  </>
-                ) : (
-                  <>
-                    <Sun className="w-5 h-5 mr-3" />
-                    <span>Light Mode</span>
-                  </>
-                )}
-              </button>
-            </li>
-          </ul>
-        </nav>
-      </aside>
-
       {/* Main content */}
       <div className="flex flex-col flex-1 overflow-hidden">
-        <header className="flex items-center justify-between h-16 px-4 border-b border-white/10 bg-white/5 backdrop-blur-lg">
-          <button 
-            onClick={toggleSidebar}
-            className="p-1 mr-4 rounded-md lg:hidden hover:bg-white/10"
+        <header className="fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-transparent">
+          <nav className="container mx-auto px-4 h-20 flex items-center justify-between">
+            <Link to="/" className="flex items-center gap-3">
+              <img 
+                src="/icon_nobackground_small copy.png" 
+                alt="MyFutrSelf" 
+                className="w-8 h-8 rounded-lg"
+              />
+              <span className="gradient-text font-heading text-xl font-bold">MyFutrSelf</span>
+            </Link>
+
+            <div className="hidden md:flex items-center space-x-4">
+              <button 
+                onClick={toggleMenu}
+                className="btn btn-ghost p-2"
+              >
+                <Menu className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Mobile Menu Button */}
+            <div className="md:hidden">
+              <button 
+                onClick={toggleMenu}
+                className="btn btn-ghost p-2"
+              >
+                <Menu className="w-6 h-6" />
+              </button>
+            </div>
+          </nav>
+        </header>
+
+        {/* Right-Side Menu (Mobile and Desktop) */}
+        {isMenuOpen && (
+          <>
+            <div 
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+              onClick={() => setIsMenuOpen(false)}
+            />
+            <div className="fixed top-0 right-0 h-full w-80 bg-bg-primary/95 backdrop-blur-xl border-l border-white/10 z-50">
+              <div className="p-6 space-y-6">
+                <div className="flex items-center justify-between">
+                  <span className="gradient-text font-heading text-lg font-bold">Menu</span>
+                  <button onClick={() => setIsMenuOpen(false)} className="p-2 hover:bg-white/10 rounded-lg">
+                    <X className="w-5 h-5 text-white" />
+                  </button>
+                </div>
+                
+                <div className="space-y-4">
+                  {/* User Profile Section */}
+                  <div className="flex gap-3 mb-6">
+                    <UserButton 
+                      afterSignOutUrl="/" 
+                      appearance={{
+                        elements: {
+                          userButtonAvatarBox: "w-10 h-10"
+                        }
+                      }}
+                    />
+                    <div className="flex-1">
+                      <div className="text-white font-medium font-heading">Profile Settings</div>
+                      <p className="text-white/60 text-sm font-body">{user?.firstName || 'User'}</p>
+                    </div>
+                  </div>
+
+                  {/* Dashboard Link */}
+                  <Link
+                    to="/dashboard"
+                    className="flex items-center gap-3 p-4 bg-white/5 rounded-xl border border-white/10 hover:bg-white/10 transition-colors"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <div className="w-10 h-10 bg-gradient-to-r from-primary-aqua to-primary-blue rounded-full flex items-center justify-center text-white">
+                      <Home className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-white font-medium font-heading">Dashboard</span>
+                      </div>
+                      <p className="text-white/60 text-sm font-body">View your goals</p>
+                    </div>
+                  </Link>
+                  
+                  {/* Pricing Link */}
+                  <div className="flex items-center gap-3 p-4 bg-white/5 rounded-xl border border-white/10">
+                    <div className="w-10 h-10 bg-gradient-to-r from-primary-aqua to-primary-blue rounded-full flex items-center justify-center text-white">
+                      <DollarSign className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Link 
+                          to="/pricing" 
+                          className="text-white font-medium font-heading hover:text-primary-aqua transition-colors"
+                          onClick={() => setIsMenuOpen(false)}
+                        >
+                          Pricing
+                        </Link>
+                      </div>
+                      <p className="text-white/60 text-sm font-body">View plans and pricing</p>
+                    </div>
+                  </div>
+                  
+                  {/* Theme Toggle */}
+                  <button
+                    onClick={toggleTheme}
+                    className="flex items-center gap-3 p-4 w-full text-left bg-white/5 rounded-xl border border-white/10 hover:bg-white/10 transition-colors"
+                  >
+                    <div className="w-10 h-10 bg-gradient-to-r from-primary-aqua to-primary-blue rounded-full flex items-center justify-center text-white">
+                      {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+                    </div>
+                    <div>
+                      <div className="text-white font-medium font-heading">
+                        {theme === 'light' ? 'Dark Mode' : 'Light Mode'}
+                      </div>
+                      <p className="text-white/60 text-sm font-body">
+                        {theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme'}
+                      </p>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Main content area */}
+        <main className="flex-1 overflow-y-auto pt-20 bg-gradient-to-br from-bg-primary to-bg-secondary">
+          <Outlet />
+        </main>
+      </div>
+    </div>
+  );
+};
+
+export default DashboardLayout;
+
           >
             <Menu size={20} className="text-white" />
           </button>
