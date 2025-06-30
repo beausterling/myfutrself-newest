@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser, useAuth } from '@clerk/clerk-react';
-import { Phone, CheckCircle, AlertCircle, Speech, X } from 'lucide-react';
+import { Phone, CheckCircle, AlertCircle, Speech, X, PhoneCall, PhoneOff, User } from 'lucide-react';
 import { useOnboarding } from '../../contexts/OnboardingContext';
 import { createAuthenticatedSupabaseClient } from '../../lib/supabase';
 
@@ -18,10 +18,12 @@ const TwilioSetup = () => {
   const [showPhoneModal, setShowPhoneModal] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [callSid, setCallSid] = useState<string | null>(null);
+  const [futurePhotoUrl, setFuturePhotoUrl] = useState<string | null>(null);
+  const [callDuration, setCallDuration] = useState(0);
 
   // Disable background scrolling when modal is open
   useEffect(() => {
-    if (showPhoneModal) {
+    if (showPhoneModal || isTestingCall) {
       const originalBodyOverflow = document.body.style.overflow;
       const originalHtmlOverflow = document.documentElement.style.overflow;
       
@@ -42,7 +44,7 @@ const TwilioSetup = () => {
         window.scrollTo(0, scrollY);
       };
     }
-  }, [showPhoneModal]);
+  }, [showPhoneModal, isTestingCall]);
 
   // Handle scroll effect for blur
   useEffect(() => {
@@ -54,6 +56,51 @@ const TwilioSetup = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Load user's future photo when component mounts
+  useEffect(() => {
+    const loadFuturePhoto = async () => {
+      if (!user?.id) return;
+
+      try {
+        const token = await getToken({ template: 'supabase' });
+        if (!token) return;
+
+        const supabase = createAuthenticatedSupabaseClient(token);
+        const { data: userProfile, error } = await supabase
+          .from('user_profiles')
+          .select('future_photo_url')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (!error && userProfile?.future_photo_url) {
+          setFuturePhotoUrl(userProfile.future_photo_url);
+        }
+      } catch (error) {
+        console.error('Error loading future photo:', error);
+      }
+    };
+
+    loadFuturePhoto();
+  }, [user?.id, getToken]);
+
+  // Call duration timer
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    
+    if (isTestingCall) {
+      setCallDuration(0);
+      interval = setInterval(() => {
+        setCallDuration(prev => prev + 1);
+      }, 1000);
+    }
+    
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [isTestingCall]);
 
   const formatPhoneNumber = (value: string) => {
     // Remove all non-digit characters
@@ -156,7 +203,11 @@ const TwilioSetup = () => {
       console.log('🎯 Call initiated with SID:', result.call_sid);
       setCallSid(result.call_sid);
       
-      setTestCallStatus('success');
+      // Simulate call duration - in reality, this would be managed by call events
+      setTimeout(() => {
+        setTestCallStatus('success');
+      }, 30000); // 30 seconds
+      
       console.log('✅ Test call initiated successfully');
       
     } catch (error) {
@@ -368,6 +419,81 @@ const TwilioSetup = () => {
           </div>
         )}
 
+        {/* Future Self Calling Modal */}
+        {isTestingCall && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-lg z-50 flex items-center justify-center p-4">
+            <div className="bg-gradient-to-br from-bg-primary/95 to-bg-secondary/95 backdrop-blur-xl border border-white/20 rounded-3xl p-8 max-w-md w-full relative overflow-hidden">
+              {/* Animated background gradient */}
+              <div className="absolute inset-0 bg-gradient-to-br from-primary-aqua/10 via-primary-blue/5 to-accent-purple/10 animate-pulse" />
+              
+              <div className="relative z-10 text-center">
+                {/* Incoming call indicator */}
+                <div className="mb-6">
+                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-500/20 border border-green-500/30 rounded-full">
+                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                    <span className="text-green-300 text-sm font-medium font-heading">Incoming Call</span>
+                  </div>
+                </div>
+                
+                {/* Future self avatar */}
+                <div className="mb-6">
+                  <div className="w-32 h-32 mx-auto rounded-full overflow-hidden border-4 border-primary-aqua/50 shadow-2xl shadow-primary-aqua/20 relative">
+                    {futurePhotoUrl ? (
+                      <img 
+                        src={futurePhotoUrl} 
+                        alt="Your Future Self" 
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-primary-aqua/20 to-primary-blue/20 flex items-center justify-center">
+                        <User className="w-16 h-16 text-primary-aqua/60" />
+                      </div>
+                    )}
+                    {/* Calling animation ring */}
+                    <div className="absolute inset-0 rounded-full border-2 border-primary-aqua animate-ping opacity-75" />
+                  </div>
+                </div>
+                
+                {/* Caller info */}
+                <div className="mb-8">
+                  <h3 className="text-2xl font-bold text-white mb-2 font-heading">Your Future Self</h3>
+                  <p className="text-white/80 font-body">Calling to check on your progress...</p>
+                  
+                  {/* Call duration */}
+                  <div className="mt-4 text-primary-aqua font-mono text-lg">
+                    {Math.floor(callDuration / 60)}:{(callDuration % 60).toString().padStart(2, '0')}
+                  </div>
+                </div>
+                
+                {/* Call controls */}
+                <div className="flex justify-center gap-8">
+                  <div className="w-16 h-16 bg-gradient-to-br from-primary-aqua to-primary-blue rounded-full flex items-center justify-center shadow-lg animate-pulse">
+                    <PhoneCall className="w-8 h-8 text-white" />
+                  </div>
+                </div>
+                
+                {/* Voice indicator */}
+                <div className="mt-6 flex items-center justify-center gap-2">
+                  <div className="flex gap-1">
+                    {[...Array(5)].map((_, i) => (
+                      <div
+                        key={i}
+                        className="w-1 bg-primary-aqua rounded-full animate-pulse"
+                        style={{
+                          height: Math.random() * 20 + 10 + 'px',
+                          animationDelay: `${i * 0.1}s`,
+                          animationDuration: '0.5s'
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-white/60 text-sm font-body ml-2">Speaking...</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="space-y-8">
           {/* Phone Number Setup Card */}
           <div className="card">
@@ -404,28 +530,6 @@ const TwilioSetup = () => {
               This will be a 30 second phone call with your future self. They will be using the voice that you selected earlier.
             </p>
 
-            {/* Test Call Status */}
-            {testCallStatus === 'success' && (
-              <div className="mb-6 p-4 bg-green-500/10 border border-green-500/20 rounded-xl">
-                <div className="flex items-center gap-3">
-                  <CheckCircle className="w-5 h-5 text-green-400" />
-                  <div>
-                    <p className="text-green-400 font-medium font-heading">Test Call Successful!</p>
-                    <p className="text-green-300 text-sm mt-1 font-body">
-                      Your future self successfully called you! The AI voice system is working perfectly.
-                    </p>
-                    {callSid && (
-                      <div className="mt-3 p-3 bg-green-500/5 border border-green-500/10 rounded-lg">
-                        <p className="text-green-200 text-xs font-body">
-                          Call ID: {callSid}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
             {testCallStatus === 'error' && (
               <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
                 <div className="flex items-center gap-3">
@@ -445,7 +549,7 @@ const TwilioSetup = () => {
               disabled={isTestingCall || testCallStatus === 'success'}
               className={`btn w-full text-lg py-4 font-heading transition-all duration-300 ${
                 testCallStatus === 'success'
-                  ? 'bg-green-500/20 text-green-400 border-green-500/30 cursor-not-allowed'
+                  ? 'btn-primary'
                   : isTestingCall
                   ? 'bg-white/10 text-white/40 cursor-not-allowed'
                   : 'btn-primary'
@@ -455,14 +559,14 @@ const TwilioSetup = () => {
                 <>
                   <div className="flex items-center justify-center gap-3">
                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Calling You Now...</span>
+                    <span>Connected - Answer Your Phone!</span>
                   </div>
                 </>
               ) : testCallStatus === 'success' ? (
                 <>
                   <div className="flex items-center justify-center gap-3">
                     <CheckCircle className="w-5 h-5" />
-                    <span>Call Completed</span>
+                    <span>Test Another Call</span>
                   </div>
                 </>
               ) : (
@@ -511,13 +615,13 @@ const TwilioSetup = () => {
           <button
             onClick={handleNext}
             className={`text-lg px-8 py-4 font-heading transition-all duration-300 rounded-xl border ${
-              canContinue && !isTestingCall
+              testCallStatus === 'success' && !isTestingCall
                 ? 'btn btn-primary'
                 : 'bg-transparent text-gray-400 border-gray-600 cursor-not-allowed hover:bg-transparent'
             }`}
-            disabled={!canContinue || isTestingCall}
+            disabled={testCallStatus !== 'success' || isTestingCall}
           >
-            {canContinue ? 'Continue' : 'Complete Test First'}
+            {testCallStatus === 'success' ? 'Continue' : 'Complete Test First'}
           </button>
         </div>
       </div>
