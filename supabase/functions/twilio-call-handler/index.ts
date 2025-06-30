@@ -157,7 +157,8 @@ async function validateTwilioSignature(
     logWithContext('INFO', 'Starting Twilio signature validation', requestId, {
       url,
       paramsCount: Object.keys(params).length,
-      hasSignature: !!signature
+      hasSignature: !!signature,
+      signaturePreview: signature.substring(0, 20) + '...'
     });
 
     // Create the signature string according to Twilio's specification
@@ -170,9 +171,11 @@ async function validateTwilioSignature(
       signatureString += key + params[key];
     }
     
-    logWithContext('INFO', 'Generated signature string', requestId, {
+    logWithContext('INFO', 'Generated signature string for validation', requestId, {
       signatureStringLength: signatureString.length,
-      firstChars: signatureString.substring(0, 100)
+      urlPart: url,
+      paramKeys: sortedKeys,
+      firstChars: signatureString.substring(0, 150) + '...'
     });
 
     // Create HMAC-SHA1 hash using Web Crypto API
@@ -202,14 +205,16 @@ async function validateTwilioSignature(
     logWithContext('INFO', 'Signature validation completed', requestId, {
       isValid,
       computedSignature: computedSignature.substring(0, 20) + '...',
-      providedSignature: signature.substring(0, 20) + '...'
+      providedSignature: signature.substring(0, 20) + '...',
+      authTokenLength: authToken.length
     });
     
     return isValid;
     
   } catch (error) {
     logWithContext('ERROR', 'Error during signature validation', requestId, {
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
     });
     return false;
   }
@@ -485,7 +490,12 @@ Deno.serve(async (req) => {
   logWithContext('INFO', 'Twilio call handler function invoked', requestId, {
     method: req.method,
     pathname,
-    userAgent: req.headers.get('user-agent')
+    userAgent: req.headers.get('user-agent'),
+    headers: {
+      host: req.headers.get('host'),
+      forwardedHost: req.headers.get('x-forwarded-host'),
+      twilioSignature: req.headers.get('x-twilio-signature') ? 'present' : 'missing'
+    }
   });
 
   try {
@@ -547,7 +557,9 @@ Deno.serve(async (req) => {
       // Get Twilio signature from headers
       const twilioSignature = req.headers.get('x-twilio-signature');
       if (!twilioSignature) {
-        logWithContext('ERROR', 'Missing Twilio signature header', requestId);
+        logWithContext('ERROR', 'Missing Twilio signature header', requestId, {
+          availableHeaders: Object.fromEntries(req.headers.entries())
+        });
         return new Response('Missing Twilio signature', { 
           status: 403,
           headers: { 'Content-Type': 'text/plain' }
@@ -561,12 +573,16 @@ Deno.serve(async (req) => {
       const params = Object.fromEntries(new URLSearchParams(rawBody));
 
       // Reconstruct the exact HTTPS URL that Twilio called
-      // Use x-forwarded-host to get the original domain, fallback to host
-      const host = req.headers.get('x-forwarded-host') || req.headers.get('host');
+      // CRITICAL: Use x-forwarded-host to get the original domain, fallback to host
+      const forwardedHost = req.headers.get('x-forwarded-host');
+      const regularHost = req.headers.get('host');
+      const host = forwardedHost || regularHost;
+      
       if (!host) {
         logWithContext('ERROR', 'Missing host/x-forwarded-host headers for URL reconstruction', requestId, {
-          host: req.headers.get('host'),
-          forwardedHost: req.headers.get('x-forwarded-host')
+          host: regularHost,
+          forwardedHost: forwardedHost,
+          allHeaders: Object.fromEntries(req.headers.entries())
         });
         return new Response('Missing host header', { 
           status: 400,
@@ -577,13 +593,16 @@ Deno.serve(async (req) => {
       const { pathname, search } = new URL(req.url);
       const fullUrl = `https://${host}${pathname}${search}`;
 
-      logWithContext('INFO', 'Validating Twilio signature', requestId, {
-        url: fullUrl,
-        originalHost: req.headers.get('host'),
-        forwardedHost: req.headers.get('x-forwarded-host'),
-        usingHost: host,
-        hasSignature: !!twilioSignature,
-        paramsCount: Object.keys(params).length
+      logWithContext('INFO', 'Reconstructed URL for signature validation', requestId, {
+        originalHost: regularHost,
+        forwardedHost: forwardedHost,
+        selectedHost: host,
+        pathname: pathname,
+        search: search,
+        fullUrl: fullUrl,
+        rawBodyLength: rawBody.length,
+        paramsCount: Object.keys(params).length,
+        signaturePresent: !!twilioSignature
       });
 
       // Validate Twilio signature using our custom implementation
@@ -599,7 +618,8 @@ Deno.serve(async (req) => {
         logWithContext('ERROR', 'Invalid Twilio signature', requestId, {
           providedSignature: twilioSignature.substring(0, 20) + '...',
           url: fullUrl,
-          paramsCount: Object.keys(params).length
+          paramsCount: Object.keys(params).length,
+          rawBodyPreview: rawBody.substring(0, 200) + '...'
         });
         return new Response('Invalid Twilio signature', { 
           status: 403,
@@ -612,7 +632,9 @@ Deno.serve(async (req) => {
       // Extract user_id from query parameters
       const userId = url.searchParams.get('user_id');
       if (!userId) {
-        logWithContext('ERROR', 'Missing user_id in webhook request', requestId);
+        logWithContext('ERROR', 'Missing user_id in webhook request', requestId, {
+          searchParams: Object.fromEntries(url.searchParams.entries())
+        });
         return new Response('Missing user_id parameter', { 
           status: 400,
           headers: { 'Content-Type': 'text/plain' }
@@ -623,6 +645,8 @@ Deno.serve(async (req) => {
         callSid: params.CallSid,
         callStatus: params.CallStatus,
         hasSpeechResult: !!params.SpeechResult,
+        speechResult: params.SpeechResult || 'none',
+        confidence: params.Confidence || 'none',
         userId
       });
 
@@ -656,7 +680,8 @@ Deno.serve(async (req) => {
       const twimlResponse = generateTwiML(audioUrl, webhookUrl, userId);
 
       logWithContext('INFO', 'TwiML response generated successfully', requestId, {
-        twimlLength: twimlResponse.length
+        twimlLength: twimlResponse.length,
+        audioUrl: audioUrl
       });
 
       return new Response(twimlResponse, {
