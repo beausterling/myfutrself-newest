@@ -14,6 +14,7 @@ const TwilioSetup = () => {
   const [isTestingCall, setIsTestingCall] = useState(false);
   const [testCallStatus, setTestCallStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [isSaving, setIsSaving] = useState(false);
+  const [testCallCompleted, setTestCallCompleted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPhoneModal, setShowPhoneModal] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -156,7 +157,8 @@ const TwilioSetup = () => {
       console.log('🎯 Call initiated with SID:', result.call_sid);
       setCallSid(result.call_sid);
       
-      setTestCallStatus('success');
+      setTestCallStatus('success'); 
+      setTestCallCompleted(true);
       console.log('✅ Test call initiated successfully');
       
     } catch (error) {
@@ -442,9 +444,9 @@ const TwilioSetup = () => {
 
             <button
               onClick={handleStartTestCall}
-              disabled={isTestingCall || testCallStatus === 'success'}
+              disabled={isTestingCall || testCallCompleted}
               className={`btn w-full text-lg py-4 font-heading transition-all duration-300 ${
-                testCallStatus === 'success'
+                testCallCompleted
                   ? 'bg-green-500/20 text-green-400 border-green-500/30 cursor-not-allowed'
                   : isTestingCall
                   ? 'bg-white/10 text-white/40 cursor-not-allowed'
@@ -454,11 +456,11 @@ const TwilioSetup = () => {
               {isTestingCall ? (
                 <>
                   <div className="flex items-center justify-center gap-3">
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                     <span>Calling You Now...</span>
                   </div>
                 </>
-              ) : testCallStatus === 'success' ? (
+              ) : testCallCompleted ? (
                 <>
                   <div className="flex items-center justify-center gap-3">
                     <CheckCircle className="w-5 h-5" />
@@ -500,7 +502,7 @@ const TwilioSetup = () => {
           </div>
         </div>
 
-        <div className="mt-16 flex justify-between max-w-md mx-auto">
+        <div className="mt-16 flex justify-between max-w-md mx-auto"> 
           <button 
             onClick={handleBack} 
             className="btn btn-outline text-lg px-8 py-4 font-heading"
@@ -511,13 +513,13 @@ const TwilioSetup = () => {
           <button
             onClick={handleNext}
             className={`text-lg px-8 py-4 font-heading transition-all duration-300 rounded-xl border ${
-              canContinue && !isTestingCall
+              (canContinue || testCallCompleted) && !isTestingCall
                 ? 'btn btn-primary'
                 : 'bg-transparent text-gray-400 border-gray-600 cursor-not-allowed hover:bg-transparent'
             }`}
-            disabled={!canContinue || isTestingCall}
+            disabled={(!canContinue && !testCallCompleted) || isTestingCall}
           >
-            {canContinue ? 'Continue' : 'Complete Test First'}
+            {canContinue || testCallCompleted ? 'Continue' : 'Complete Test First'}
           </button>
         </div>
       </div>

@@ -156,9 +156,9 @@ async function validateTwilioSignature(
   try {
     logWithContext('INFO', 'Starting Twilio signature validation', requestId, {
       originalUrl,
-      paramsCount: Object.keys(params).length,
+      paramsCount: Object.keys(params).length, 
       hasSignature: !!signature,
-      signaturePreview: signature.substring(0, 20) + '...'
+      signaturePreview: signature ? signature.substring(0, 20) + '...' : 'missing'
     });
 
     // Extract the base URL without query parameters for signature validation
@@ -210,7 +210,7 @@ async function validateTwilioSignature(
     logWithContext('INFO', 'Signature validation completed', requestId, {
       isValid,
       computedSignature,
-      providedSignature: signature,
+      providedSignature: signature || 'missing',
       authTokenLength: authToken.length
     });
     
