@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser, useAuth, useClerk } from '@clerk/clerk-react';
-import { Heart, AlertCircle } from 'lucide-react';
+import { Heart, Plus, X, AlertCircle, Trash2 } from 'lucide-react';
 import { useOnboarding } from '../../contexts/OnboardingContext';
 import { createAuthenticatedSupabaseClient } from '../../lib/supabase';
-import GoalMotivationSection from '../../components/onboarding/GoalMotivationSection';
 
 interface Goal {
   id: string;
@@ -33,7 +32,7 @@ const UserMotivation = () => {
   const [error, setError] = useState<string | null>(null);
   const [hasLoadedFromDB, setHasLoadedFromDB] = useState(false);
   
-  // Individual state for each goal's obstacle input - isolated per goal
+  // Individual state for each goal's obstacle input - this is the key fix
   const [obstacleInputs, setObstacleInputs] = useState<Record<string, string>>({});
 
   // Handle scroll effect for blur
@@ -96,6 +95,7 @@ const UserMotivation = () => {
         }));
 
         console.log('✅ Goals loaded:', transformedGoals.length);
+        console.log('🎯 Goal IDs:', transformedGoals.map(g => ({ id: g.id, title: g.title })));
         setGoals(transformedGoals);
 
         // Load existing motivations
@@ -131,8 +131,7 @@ const UserMotivation = () => {
         });
 
         console.log('✅ Motivations loaded:', Object.keys(motivationsRecord).length);
-        console.log('🎯 Initialized obstacle inputs for goals:', Object.keys(initialObstacleInputs));
-        
+        console.log('🎯 Initial obstacle inputs:', initialObstacleInputs);
         setMotivations(motivationsRecord);
         setObstacleInputs(initialObstacleInputs);
         setHasLoadedFromDB(true);
@@ -148,9 +147,8 @@ const UserMotivation = () => {
     loadGoalsAndMotivations();
   }, [user?.id, getToken, hasLoadedFromDB]);
 
-  // Create callback functions for each goal to handle motivation changes
-  const createMotivationChangeHandler = (goalId: string) => (value: string) => {
-    console.log(`📝 Motivation change handler called for goal ${goalId}:`, value);
+  const handleMotivationChange = (goalId: string, value: string) => {
+    console.log('📝 Motivation change for goal:', goalId, 'Length:', value.length);
     setMotivations(prev => ({
       ...prev,
       [goalId]: {
@@ -163,31 +161,28 @@ const UserMotivation = () => {
     }));
   };
 
-  // Create callback functions for each goal to handle obstacle input changes
-  const createObstacleInputChangeHandler = (goalId: string) => (value: string) => {
-    console.log(`📝 Obstacle input change handler called for goal ${goalId}:`, {
-      goalId,
-      newValue: value,
-      timestamp: new Date().toISOString()
+  // Fixed: Handle obstacle input change for specific goal
+  const handleObstacleInputChange = (goalId: string, value: string) => {
+    console.log('🎯 OBSTACLE INPUT CHANGE - Goal ID:', goalId, 'Value:', value, 'Length:', value.length);
+    console.log('🔍 Current obstacle inputs before change:', obstacleInputs);
+    
+    setObstacleInputs(prev => {
+      const newState = {
+        ...prev,
+        [goalId]: value
+      };
+      console.log('🔄 New obstacle inputs state:', newState);
+      return newState;
     });
-    setObstacleInputs(prev => ({
-      ...prev,
-      [goalId]: value
-    }));
   };
 
-  // Create callback functions for each goal to handle adding obstacles
-  const createAddObstacleHandler = (goalId: string) => () => {
+  // Fixed: Add obstacle for specific goal
+  const handleAddObstacle = (goalId: string) => {
     const obstacleText = obstacleInputs[goalId]?.trim();
-    console.log(`➕ Add obstacle handler called for goal ${goalId}:`, {
-      goalId,
-      obstacleText,
-      currentInput: obstacleInputs[goalId],
-      timestamp: new Date().toISOString()
-    });
+    console.log('➕ Adding obstacle for goal:', goalId, 'Text:', obstacleText);
     
     if (!obstacleText) {
-      console.warn(`⚠️ No obstacle text to add for goal ${goalId}`);
+      console.log('⚠️ No obstacle text to add for goal:', goalId);
       return;
     }
 
@@ -203,24 +198,18 @@ const UserMotivation = () => {
     }));
 
     // Clear the input for this specific goal
-    setObstacleInputs(prev => ({
-      ...prev,
-      [goalId]: ''
-    }));
-
-    console.log(`✅ Obstacle added for goal ${goalId}:`, obstacleText);
+    setObstacleInputs(prev => {
+      const newState = {
+        ...prev,
+        [goalId]: ''
+      };
+      console.log('🧹 Cleared input for goal:', goalId, 'New state:', newState);
+      return newState;
+    });
   };
 
-  // Create callback functions for each goal to handle removing obstacles
-  const createRemoveObstacleHandler = (goalId: string) => (obstacleIndex: number) => {
-    const obstacleToRemove = motivations[goalId]?.obstacles?.[obstacleIndex];
-    console.log(`🗑️ Remove obstacle handler called for goal ${goalId}:`, {
-      goalId,
-      obstacleIndex,
-      obstacleToRemove,
-      timestamp: new Date().toISOString()
-    });
-
+  const handleRemoveObstacle = (goalId: string, obstacleIndex: number) => {
+    console.log('🗑️ Removing obstacle for goal:', goalId, 'Index:', obstacleIndex);
     setMotivations(prev => ({
       ...prev,
       [goalId]: {
@@ -231,8 +220,6 @@ const UserMotivation = () => {
         id: prev[goalId]?.id || ''
       }
     }));
-
-    console.log(`✅ Obstacle removed for goal ${goalId}:`, obstacleToRemove);
   };
 
   const saveMotivations = async () => {
@@ -409,28 +396,109 @@ const UserMotivation = () => {
 
         {/* Goals by Category */}
         <div className="space-y-8">
-          {Object.entries(goalsByCategory).map(([categoryName, categoryGoals]) => (
-            <div key={categoryName} className="card">
-              <h3 className="text-xl font-semibold mb-6 font-heading text-primary-aqua">
-                {categoryName}
-              </h3>
-              
-              <div className="space-y-6">
-                {categoryGoals.map((goal) => (
-                  <GoalMotivationSection
-                    key={goal.id}
-                    goal={goal}
-                    motivation={motivations[goal.id]}
-                    obstacleInput={obstacleInputs[goal.id] || ''}
-                    onMotivationChange={createMotivationChangeHandler(goal.id)}
-                    onObstacleInputChange={createObstacleInputChangeHandler(goal.id)}
-                    onAddObstacle={createAddObstacleHandler(goal.id)}
-                    onRemoveObstacle={createRemoveObstacleHandler(goal.id)}
-                  />
-                ))}
+          {Object.entries(goalsByCategory).map(([categoryName, categoryGoals]) => {
+            console.log('🏷️ Rendering category:', categoryName, 'with goals:', categoryGoals.map(g => g.id));
+            return (
+              <div key={categoryName} className="card">
+                <h3 className="text-xl font-semibold mb-6 font-heading text-primary-aqua">
+                  {categoryName}
+                </h3>
+                
+                <div className="space-y-6">
+                  {categoryGoals.map((goal) => {
+                    console.log('🎯 Rendering goal:', goal.id, 'Title:', goal.title);
+                    console.log('📋 Current obstacle input for this goal:', obstacleInputs[goal.id] || 'undefined');
+                    
+                    return (
+                      <div key={goal.id} className="bg-white/5 rounded-xl p-6 border border-white/10">
+                        <h4 className="text-lg font-semibold mb-4 font-heading text-white">
+                          {goal.title}
+                        </h4>
+                        
+                        {/* Motivation Text Area */}
+                        <div className="mb-6">
+                          <label className="block text-sm font-medium text-text-secondary mb-2 font-heading">
+                            What motivates you to achieve this goal?
+                          </label>
+                          <textarea
+                            value={motivations[goal.id]?.motivation_text || ''}
+                            onChange={(e) => handleMotivationChange(goal.id, e.target.value)}
+                            placeholder="Describe what drives you to achieve this goal..."
+                            className="w-full bg-white/5 text-white border border-white/20 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-aqua/50 focus:border-transparent backdrop-blur-lg resize-none font-body"
+                            rows={3}
+                            required
+                          />
+                        </div>
+
+                        {/* Obstacles Section */}
+                        <div>
+                          <label className="block text-sm font-medium text-text-secondary mb-2 font-heading">
+                            What obstacles might you face?
+                          </label>
+                          
+                          {/* Existing Obstacles */}
+                          {motivations[goal.id]?.obstacles && motivations[goal.id].obstacles.length > 0 && (
+                            <div className="mb-3 space-y-2">
+                              {motivations[goal.id].obstacles.map((obstacle, index) => (
+                                <div key={index} className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2 border border-white/10">
+                                  <span className="flex-1 text-white text-sm font-body">{obstacle}</span>
+                                  <button
+                                    onClick={() => handleRemoveObstacle(goal.id, index)}
+                                    className="text-red-400 hover:text-red-300 transition-colors p-1"
+                                    type="button"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Add Obstacle Input - Fixed: Each goal has its own input with explicit key */}
+                          <div className="flex gap-2">
+                            <input
+                              key={`obstacle-input-${goal.id}`} // CRITICAL: Explicit key for the input element
+                              type="text"
+                              value={obstacleInputs[goal.id] || ''}
+                              onChange={(e) => {
+                                console.log('🔥 INPUT CHANGE EVENT - Goal ID:', goal.id, 'New Value:', e.target.value);
+                                handleObstacleInputChange(goal.id, e.target.value);
+                              }}
+                              onKeyPress={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  console.log('⌨️ Enter key pressed for goal:', goal.id);
+                                  handleAddObstacle(goal.id);
+                                }
+                              }}
+                              placeholder="Add an obstacle..."
+                              className="flex-1 bg-white/5 text-white border border-white/20 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-aqua/50 focus:border-transparent backdrop-blur-lg text-sm font-body"
+                              data-goal-id={goal.id} // Additional debugging attribute
+                            />
+                            <button
+                              onClick={() => {
+                                console.log('🔘 Add button clicked for goal:', goal.id);
+                                handleAddObstacle(goal.id);
+                              }}
+                              disabled={!obstacleInputs[goal.id]?.trim()}
+                              className={`px-3 py-2 rounded-lg transition-colors ${
+                                obstacleInputs[goal.id]?.trim()
+                                  ? 'bg-primary-aqua text-white hover:bg-primary-aqua/80'
+                                  : 'bg-white/10 text-white/40 cursor-not-allowed'
+                              }`}
+                              type="button"
+                            >
+                              <Plus className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="mt-16 flex justify-between max-w-md mx-auto">
