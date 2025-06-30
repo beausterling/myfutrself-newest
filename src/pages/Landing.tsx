@@ -276,6 +276,7 @@ const Landing = () => {
                 with yourself yesterday. The person you become tomorrow depends
                 on the conversations you have with yourself today."
               </blockquote>
+              <cite>Legend</cite>
             </div>
           </motion.div>
         </div>
