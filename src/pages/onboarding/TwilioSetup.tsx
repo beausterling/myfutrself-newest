@@ -954,42 +954,24 @@ const TwilioSetup = () => {
 
             <button
               onClick={handleStartTestCall}
-              disabled={isTestingCall || testCallCompleted}
-              className={`btn w-full text-lg py-4 font-heading transition-all duration-300 opacity-50 cursor-not-allowed ${
+              disabled={true}
+              className={`btn w-full text-lg py-4 font-heading transition-all duration-300 opacity-30 cursor-not-allowed ${
                 testCallCompleted
                   ? 'bg-green-500/20 text-green-400 border-green-500/30 cursor-not-allowed'
                   : isTestingCall
                   ? 'bg-white/10 text-white/40 cursor-not-allowed'
-                  : 'btn-primary'
+                  : 'bg-gray-500/20 text-gray-400 border-gray-500/30'
               }`}
             >
-              {isTestingCall ? (
-                <>
-                  <div className="flex items-center justify-center gap-3">
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Calling You Now...</span>
-                  </div>
-                </>
-              ) : testCallCompleted ? (
-                <>
-                  <div className="flex items-center justify-center gap-3">
-                    <CheckCircle className="w-5 h-5" />
-                    <span>Call Completed</span>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="flex items-center justify-center gap-3">
-                    <Phone className="w-5 h-5" />
-                    <span>Test Call with AI</span>
-                  </div>
-                </>
-              )}
+              <div className="flex items-center justify-center gap-3">
+                <Phone className="w-5 h-5" />
+                <span>Test Call with AI</span>
+              </div>
             </button>
             
             <div className="text-center mt-4">
-              <p className="text-white/50 text-sm italic font-body">
-                Phone calls are temporarily disabled
+              <p className="text-red-400 text-sm font-body">
+                Phone calls are currently unavailable
               </p>
             </div>
           </div>
