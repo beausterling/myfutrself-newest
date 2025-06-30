@@ -387,6 +387,35 @@ const Pricing = () => {
                   </ul>
                 </div>
               )}
+              
+              {/* Coming Soon section - only show for paid plans */}
+              {(selectedPlan === 'starter' || selectedPlan === 'premium') && (
+                <div className="mt-6 pt-6 border-t border-white/10">
+                  <h4 className="text-lg font-semibold font-heading text-center mb-4 text-purple-400">Coming Soon:</h4>
+                  <ul className="space-y-3">
+                    <li className="flex items-start gap-3">
+                      <div className="w-5 h-5 bg-purple-500 rounded-full flex items-center justify-center mt-0.5 flex-shrink-0">
+                        <span className="text-white text-xs">✨</span>
+                      </div>
+                      <span className="text-white/70 font-body">AI-triggered check-ins</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <div className="w-5 h-5 bg-purple-500 rounded-full flex items-center justify-center mt-0.5 flex-shrink-0">
+                        <span className="text-white text-xs">✨</span>
+                      </div>
+                      <span className="text-white/70 font-body">Video calls with your future self</span>
+                    </li>
+                    {selectedPlan === 'premium' && (
+                      <li className="flex items-start gap-3">
+                        <div className="w-5 h-5 bg-purple-500 rounded-full flex items-center justify-center mt-0.5 flex-shrink-0">
+                          <span className="text-white text-xs">✨</span>
+                        </div>
+                        <span className="text-white/70 font-body">Advanced AI insights & coaching</span>
+                      </li>
+                    )}
+                  </ul>
+                </div>
+              )}
             </div>
 
             <div className="text-center">
