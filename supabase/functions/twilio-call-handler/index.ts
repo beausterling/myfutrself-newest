@@ -1,7 +1,4 @@
-import { serve } from 'https://deno.land/std@0.224.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { validateRequest } from 'https://esm.sh/twilio@5.3.4'
-import { VoiceResponse } from 'https://esm.sh/twilio@5.3.4/lib/twiml/VoiceResponse'
+import { createClient } from 'npm:@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -330,28 +327,57 @@ async function generateSpeech(
   }
 }
 
-// Generate TwiML response using Twilio VoiceResponse
+// Simple Twilio signature validation without external library
+function validateTwilioSignature(
+  authToken: string,
+  signature: string,
+  url: string,
+  params: Record<string, string>
+): boolean {
+  try {
+    // Create the signature string by concatenating URL and sorted parameters
+    const sortedKeys = Object.keys(params).sort();
+    let signatureString = url;
+    
+    for (const key of sortedKeys) {
+      signatureString += key + params[key];
+    }
+    
+    // Create HMAC-SHA1 hash
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(authToken);
+    const messageData = encoder.encode(signatureString);
+    
+    return crypto.subtle.importKey(
+      'raw',
+      keyData,
+      { name: 'HMAC', hash: 'SHA-1' },
+      false,
+      ['sign']
+    ).then(key => 
+      crypto.subtle.sign('HMAC', key, messageData)
+    ).then(hashBuffer => {
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const hashBase64 = btoa(String.fromCharCode.apply(null, hashArray));
+      return hashBase64 === signature;
+    }).catch(() => false);
+    
+  } catch (error) {
+    return false;
+  }
+}
+
+// Generate TwiML response using simple XML construction
 function generateTwiML(audioUrl: string, webhookUrl: string, userId: string): string {
-  const twiml = new VoiceResponse();
-  
-  // Play the AI-generated audio
-  twiml.play({}, audioUrl);
-  
-  // Gather speech input from the user
-  const gather = twiml.gather({
-    input: 'speech',
-    timeout: 10,
-    speechTimeout: 'auto',
-    action: `${webhookUrl}?user_id=${userId}`,
-    method: 'POST'
-  });
-  gather.say({ voice: 'alice' }, 'Please respond when you\'re ready.');
-  
-  // Fallback if no response
-  twiml.say({ voice: 'alice' }, 'I didn\'t hear a response. Have a great day!');
-  twiml.hangup();
-  
-  return twiml.toString();
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Play>${audioUrl}</Play>
+  <Gather input="speech" timeout="10" speechTimeout="auto" action="${webhookUrl}?user_id=${userId}" method="POST">
+    <Say voice="alice">Please respond when you're ready.</Say>
+  </Gather>
+  <Say voice="alice">I didn't hear a response. Have a great day!</Say>
+  <Hangup/>
+</Response>`;
 }
 
 // Initiate outbound call using Twilio
@@ -415,7 +441,7 @@ async function initiateCall(
   }
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   const requestId = generateRequestId();
   const url = new URL(req.url);
   const pathname = url.pathname;
@@ -523,8 +549,8 @@ serve(async (req) => {
         paramsCount: Object.keys(params).length
       });
 
-      // Validate Twilio signature using the official library
-      const isValidSignature = validateRequest(
+      // Validate Twilio signature using our custom implementation
+      const isValidSignature = await validateTwilioSignature(
         twilioAuthToken,
         twilioSignature,
         fullUrl,
