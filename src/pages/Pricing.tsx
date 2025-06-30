@@ -495,18 +495,6 @@ const Pricing = () => {
           </button>
         </motion.div>
       </div>
-
-      {/* Test Button */}
-      <div className="container mx-auto px-4 pb-8">
-        <div className="text-center">
-          <Link 
-            to="/test-pricing"
-            className="inline-block bg-white/10 hover:bg-white/20 text-white/80 hover:text-white border border-white/20 hover:border-white/30 px-6 py-3 rounded-lg transition-all duration-300 font-body text-sm"
-          >
-            Test Pricing Component
-          </Link>
-        </div>
-      </div>
     </div>
   );
 };
