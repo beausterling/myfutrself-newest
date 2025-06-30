@@ -205,7 +205,7 @@ async function validateTwilioSignature(
     logWithContext('INFO', 'Signature validation completed', requestId, {
       isValid,
       computedSignature: computedSignature.substring(0, 20) + '...',
-      providedSignature: signature || 'missing',
+      providedSignature: signature ? signature.substring(0, 20) + '...' : 'missing',
       authTokenLength: authToken.length
     });
     
@@ -224,7 +224,7 @@ async function validateTwilioSignature(
 async function getUserVoicePreference(
   supabase: any,
   userId: string,
-  requestId: string
+  webhookBaseUrl: string,
 ): Promise<string> {
   logWithContext('INFO', 'Fetching user voice preference', requestId, { userId });
 
@@ -438,6 +438,15 @@ async function initiateCall(
     // Construct the webhook URL using the Supabase URL
     // This ensures the x-deno-subhost header will be set correctly
     const webhookUrl = `${webhookBaseUrl}/functions/v1/twilio-call-handler/twiml-webhook?user_id=${userId}`;
+
+    // Construct the webhook URL using the Supabase URL
+    // This ensures the x-deno-subhost header will be set correctly
+    const webhookUrl = `${webhookBaseUrl}/functions/v1/twilio-call-handler/twiml-webhook?user_id=${userId}`;
+    
+    logWithContext('INFO', 'Using webhook URL for Twilio', requestId, { 
+      webhookUrl,
+      userId
+    });
     
     logWithContext('INFO', 'Using webhook URL for Twilio', requestId, { 
       webhookUrl,
@@ -540,13 +549,11 @@ Deno.serve(async (req) => {
       }
 
       // Construct webhook URL for TwiML responses
-      // Initiate the call
-      const callSid = await initiateCall(
         requestBody.to_phone_number,
         twilioFromNumber,
         supabaseUrl, // Pass the base URL for constructing the webhook URL
         requestBody.user_id,
-        twilioAccountSid,
+        supabaseUrl, // Pass the base URL for constructing the webhook URL
         twilioAuthToken,
         requestId
       );
@@ -568,27 +575,6 @@ Deno.serve(async (req) => {
           availableHeaders: Object.fromEntries(req.headers.entries())
         });
         return new Response('Missing Twilio signature', { 
-          status: 403,
-          headers: { 'Content-Type': 'text/plain' }
-        });
-      }
-
-      // Get the raw body as text for signature validation
-      const rawBody = await req.text();
-      
-      // Parse the raw URL-encoded body into a params object
-      const params = Object.fromEntries(new URLSearchParams(rawBody));
-
-      // Reconstruct the exact HTTPS URL that Twilio called
-      // CRITICAL: Use x-forwarded-host to get the original domain, fallback to host
-      const forwardedHost = req.headers.get('x-forwarded-host');
-      const regularHost = req.headers.get('host');
-      const host = forwardedHost || regularHost;
-
-      // CRITICAL FIX: Use the original URL that Twilio called directly
-      // This is the most reliable way to ensure the URL matches what Twilio signed
-      const fullUrl = req.url;
-      
       logWithContext('INFO', 'Using full request URL for signature validation', requestId, {
         fullUrl,
         twilioSignaturePresent: !!twilioSignature
@@ -673,6 +659,11 @@ Deno.serve(async (req) => {
         fullWebhookUrl,
         audioUrl
       });
+      const fullWebhookUrl = `${req.url.split('?')[0]}?user_id=${userId}`;
+      const twimlResponse = generateTwiML(audioUrl, fullWebhookUrl, userId);
+      
+      logWithContext('INFO', 'Using full webhook URL in TwiML response', requestId, {
+        fullWebhookUrl,
 
       logWithContext('INFO', 'TwiML response generated successfully', requestId, {
         twimlLength: twimlResponse.length,

@@ -1032,7 +1032,7 @@ const ChooseVoice = () => {
       <div className="onboarding-content container mx-auto px-4 max-w-2xl">
         <div className="text-center mb-12">
           <div className="flex items-center justify-center gap-4 mb-4">
-            <h1 className="text-3xl md:text-4xl font-bold font-heading">Choose Your Future Self's Voice</h1>
+            <Mic className="w-8 h-8 md:w-10 md:h-10 text-primary-aqua" />
           </div>
           <p className="text-text-secondary text-lg leading-relaxed font-body">
             Select the voice that will guide and motivate you on your journey.
