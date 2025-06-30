@@ -7,6 +7,7 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-twilio-signature',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Max-Age': '86400', // Cache preflight for 24 hours
 }
 
 interface InitiateCallRequest {
@@ -422,7 +423,10 @@ serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     logWithContext('INFO', 'CORS preflight request handled', requestId);
-    return new Response('ok', { headers: corsHeaders });
+    return new Response(null, { 
+      status: 204,
+      headers: corsHeaders 
+    });
   }
 
   logWithContext('INFO', 'Twilio call handler function invoked', requestId, {
