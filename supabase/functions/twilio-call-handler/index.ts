@@ -1,4 +1,4 @@
-import { createClient } from 'npm:@supabase/supabase-js@2'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -142,6 +142,76 @@ function extractUserIdFromJWT(authHeader: string | null, requestId: string): str
   } catch (error) {
     logWithContext('ERROR', 'Failed to extract user ID from JWT', requestId, { error: error instanceof Error ? error.message : String(error) });
     throw new Error('Invalid JWT token');
+  }
+}
+
+// Twilio signature validation using Web Crypto API
+async function validateTwilioSignature(
+  authToken: string,
+  signature: string,
+  url: string,
+  params: Record<string, string>,
+  requestId: string
+): Promise<boolean> {
+  try {
+    logWithContext('INFO', 'Starting Twilio signature validation', requestId, {
+      url,
+      paramsCount: Object.keys(params).length,
+      hasSignature: !!signature
+    });
+
+    // Create the signature string according to Twilio's specification
+    // Start with the full URL
+    let signatureString = url;
+    
+    // Sort parameters alphabetically and append them
+    const sortedKeys = Object.keys(params).sort();
+    for (const key of sortedKeys) {
+      signatureString += key + params[key];
+    }
+    
+    logWithContext('INFO', 'Generated signature string', requestId, {
+      signatureStringLength: signatureString.length,
+      firstChars: signatureString.substring(0, 100)
+    });
+
+    // Create HMAC-SHA1 hash using Web Crypto API
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(authToken);
+    const messageData = encoder.encode(signatureString);
+    
+    // Import the key for HMAC
+    const cryptoKey = await crypto.subtle.importKey(
+      'raw',
+      keyData,
+      { name: 'HMAC', hash: 'SHA-1' },
+      false,
+      ['sign']
+    );
+    
+    // Generate the HMAC signature
+    const signatureBuffer = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
+    
+    // Convert to base64
+    const signatureArray = new Uint8Array(signatureBuffer);
+    const binaryString = Array.from(signatureArray, byte => String.fromCharCode(byte)).join('');
+    const computedSignature = btoa(binaryString);
+    
+    const isValid = computedSignature === signature;
+    
+    logWithContext('INFO', 'Signature validation completed', requestId, {
+      isValid,
+      computedSignature: computedSignature.substring(0, 20) + '...',
+      providedSignature: signature.substring(0, 20) + '...'
+    });
+    
+    return isValid;
+    
+  } catch (error) {
+    logWithContext('ERROR', 'Error during signature validation', requestId, {
+      error: error instanceof Error ? error.message : String(error)
+    });
+    return false;
   }
 }
 
@@ -324,46 +394,6 @@ async function generateSpeech(
       voiceId
     });
     throw error;
-  }
-}
-
-// Simple Twilio signature validation without external library
-function validateTwilioSignature(
-  authToken: string,
-  signature: string,
-  url: string,
-  params: Record<string, string>
-): boolean {
-  try {
-    // Create the signature string by concatenating URL and sorted parameters
-    const sortedKeys = Object.keys(params).sort();
-    let signatureString = url;
-    
-    for (const key of sortedKeys) {
-      signatureString += key + params[key];
-    }
-    
-    // Create HMAC-SHA1 hash
-    const encoder = new TextEncoder();
-    const keyData = encoder.encode(authToken);
-    const messageData = encoder.encode(signatureString);
-    
-    return crypto.subtle.importKey(
-      'raw',
-      keyData,
-      { name: 'HMAC', hash: 'SHA-1' },
-      false,
-      ['sign']
-    ).then(key => 
-      crypto.subtle.sign('HMAC', key, messageData)
-    ).then(hashBuffer => {
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const hashBase64 = btoa(String.fromCharCode.apply(null, hashArray));
-      return hashBase64 === signature;
-    }).catch(() => false);
-    
-  } catch (error) {
-    return false;
   }
 }
 
@@ -554,7 +584,8 @@ Deno.serve(async (req) => {
         twilioAuthToken,
         twilioSignature,
         fullUrl,
-        params
+        params,
+        requestId
       );
 
       if (!isValidSignature) {
