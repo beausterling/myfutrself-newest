@@ -228,13 +228,6 @@ function formatUserDataForPrompt(goalData: UserGoalData[], requestId: string): s
       formattedData += `Deadline: ${goal.deadline}\n`;
     }
     
-    if (goal.frequency && goal.frequency !== 'None, I will reach out on my own') {
-      formattedData += `Check-in Frequency: ${goal.frequency}\n`;
-      if (goal.start_date) {
-        formattedData += `Started: ${goal.start_date}\n`;
-      }
-    }
-    
     if (goal.motivation_text) {
       formattedData += `Motivation: ${goal.motivation_text}\n`;
     }
@@ -267,24 +260,7 @@ async function generateChatCompletion(
   });
 
   try {
-    const systemPrompt = `You are the user's future self - a wise, accomplished version of them who has successfully achieved their goals. You're calling them for a brief 30-second phone conversation to provide encouragement and guidance.
-
-Your personality:
-- Warm, supportive, and genuinely caring
-- Confident but not arrogant
-- Speaks from experience of having overcome similar challenges
-- Uses "I" and "we" language to emphasize you're the same person
-- Keeps messages concise and impactful for a phone call
-
-Context: ${context}
-
-Based on their current goals and challenges, provide a brief, encouraging message (2-3 sentences max) that:
-1. Acknowledges their current efforts
-2. Provides specific encouragement related to their goals
-3. Offers one practical insight or reminder
-4. Ends with confidence in their success
-
-Keep it conversational and natural, as if you're actually speaking to them on the phone.`;
+    const systemPrompt = `you are conversational agent designed to be my future self. i am giving you my goals, motivations, deadlines, and obstacles. your task is to motivate me and keep me accountable to these goals.`;
 
     const userPrompt = `Here's what I'm currently working on:\n\n${userData}`;
 
