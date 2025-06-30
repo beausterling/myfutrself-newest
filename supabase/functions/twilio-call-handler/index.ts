@@ -154,11 +154,13 @@ async function validateTwilioSignature(
   requestId: string
 ): Promise<boolean> {
   try {
-    logWithContext('INFO', 'Starting Twilio signature validation', requestId, {
+    logWithContext('INFO', '🔍 Starting Twilio signature validation', requestId, {
       fullRequestUrl,
       paramsCount: Object.keys(params).length, 
       hasSignature: !!signature,
-      signaturePreview: signature ? signature.substring(0, 20) + '...' : 'missing'
+      signaturePreview: signature ? signature.substring(0, 20) + '...' : 'missing',
+      paramKeys: Object.keys(params),
+      paramValues: Object.entries(params).map(([k, v]) => `${k}=${v.substring(0, 10)}${v.length > 10 ? '...' : ''}`)
     });
 
     // Create the signature string according to Twilio's specification
@@ -167,21 +169,34 @@ async function validateTwilioSignature(
     
     // Sort parameters alphabetically and append them
     const sortedKeys = Object.keys(params).sort();
+    
+    logWithContext('INFO', '🔄 Sorted parameter keys', requestId, {
+      sortedKeys,
+      originalKeys: Object.keys(params)
+    });
+    
     for (const key of sortedKeys) {
       signatureString += key + params[key];
     }
     
-    logWithContext('INFO', 'Generated signature string for validation', requestId, {
+    logWithContext('INFO', '📝 Generated signature string for validation', requestId, {
       signatureStringLength: signatureString.length,
       fullRequestUrl,
       paramKeys: sortedKeys,
-      signatureStringPreview: signatureString.substring(0, 150) + '...'
+      signatureStringPreview: signatureString.substring(0, 150) + '...',
+      fullSignatureString: signatureString // Log the complete string for exact comparison
     });
 
     // Create HMAC-SHA1 hash using Web Crypto API
     const encoder = new TextEncoder();
     const keyData = encoder.encode(authToken);
     const messageData = encoder.encode(signatureString);
+    
+    logWithContext('INFO', '🔑 Preparing crypto materials', requestId, {
+      authTokenLength: authToken.length,
+      authTokenFirstChars: authToken.substring(0, 3) + '...' + authToken.substring(authToken.length - 3),
+      messageDataLength: messageData.length
+    });
     
     // Import the key for HMAC
     const cryptoKey = await crypto.subtle.importKey(
@@ -192,6 +207,8 @@ async function validateTwilioSignature(
       ['sign']
     );
     
+    logWithContext('INFO', '🔐 Crypto key imported successfully', requestId);
+    
     // Generate the HMAC signature
     const signatureBuffer = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
     
@@ -200,13 +217,20 @@ async function validateTwilioSignature(
     const binaryString = Array.from(signatureArray, byte => String.fromCharCode(byte)).join('');
     const computedSignature = btoa(binaryString);
     
+    // Log the raw bytes for debugging
+    logWithContext('INFO', '🔢 Raw signature bytes', requestId, {
+      signatureArrayLength: signatureArray.length,
+      signatureArrayPreview: Array.from(signatureArray.slice(0, 10))
+    });
+    
     const isValid = computedSignature === signature;
     
-    logWithContext('INFO', 'Signature validation completed', requestId, {
+    logWithContext('INFO', `${isValid ? '✅' : '❌'} Signature validation completed`, requestId, {
       isValid,
-      computedSignature: computedSignature.substring(0, 20) + '...',
-      providedSignature: signature ? signature.substring(0, 20) + '...' : 'missing',
-      authTokenLength: authToken.length
+      computedSignature: computedSignature,
+      providedSignature: signature,
+      authTokenLength: authToken.length,
+      match: computedSignature === signature
     });
     
     return isValid;
@@ -579,9 +603,25 @@ Deno.serve(async (req) => {
       // Get full request URL for signature validation
       const fullUrl = `${url.protocol}//${url.host}${url.pathname}${url.search}`;
 
-      logWithContext('INFO', 'Using full request URL for signature validation', requestId, {
+      // Log all headers for debugging
+      const allHeadersObj: Record<string, string> = {};
+      req.headers.forEach((value, key) => {
+        allHeadersObj[key] = value;
+      });
+      
+      logWithContext('INFO', '🔍 Request details for signature validation', requestId, {
         fullUrl,
-        twilioSignaturePresent: !!twilioSignature
+        originalUrl: req.url,
+        method: req.method,
+        host: url.host,
+        pathname: url.pathname,
+        search: url.search,
+        twilioSignaturePresent: !!twilioSignature,
+        twilioSignature: twilioSignature || 'missing',
+        allHeaders: allHeadersObj,
+        rawBodyLength: rawBody.length,
+        paramsCount: Object.keys(params).length,
+        paramKeys: Object.keys(params)
       });
 
       // Validate Twilio signature using our custom implementation
@@ -657,6 +697,14 @@ Deno.serve(async (req) => {
       // Generate TwiML response with the correct webhook URL
       // Include the full URL with the host to ensure proper routing
       const fullWebhookUrl = `${req.url.split('?')[0]}?user_id=${userId}`;
+      
+      // Log the URL components for debugging
+      logWithContext('INFO', '🔗 URL components for webhook URL', requestId, {
+        originalReqUrl: req.url,
+        splitUrl: req.url.split('?'),
+        constructedWebhookUrl: fullWebhookUrl
+      });
+      
       const twimlResponse = generateTwiML(audioUrl, fullWebhookUrl, userId);
       
       logWithContext('INFO', 'Using full webhook URL in TwiML response', requestId, {
