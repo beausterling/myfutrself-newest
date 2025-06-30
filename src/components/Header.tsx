@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { SignedIn, SignedOut, UserButton, useUser, useAuth, useClerk } from '@clerk/clerk-react';
+import { SignedIn, SignedOut, UserButton, useUser, useAuth, useClerk, SignInButton, SignUpButton } from '@clerk/clerk-react';
 import { Menu, X, Settings, DollarSign } from 'lucide-react';
 import { createAuthenticatedSupabaseClient } from '../lib/supabase';
 
@@ -206,16 +206,16 @@ const Header = ({ theme, toggleTheme }: { theme: string; toggleTheme: () => void
                 <div className="space-y-4">
                   {/* Sign In/Sign Up buttons at top */}
                   <div className="flex gap-3 mb-6">
-                    <Link to="/" onClick={() => setIsMenuOpen(false)}>
+                    <SignInButton mode="modal">
                       <button className="flex-1 btn btn-outline font-heading">
                         Sign In
                       </button>
-                    </Link>
-                    <Link to="/" onClick={() => setIsMenuOpen(false)}>
+                    </SignInButton>
+                    <SignUpButton mode="modal">
                       <button className="flex-1 btn btn-primary font-heading">
                         Sign Up
                       </button>
-                    </Link>
+                    </SignUpButton>
                   </div>
 
                   <Link 
