@@ -176,6 +176,13 @@ const TwilioSetup = () => {
             >
               Create New Number
             </button>
+            
+            {/* Coming Soon indicator */}
+            <div className="text-center mt-4">
+              <p className="text-white/50 text-sm italic font-body">
+                Coming Soon
+              </p>
+            </div>
           </div>
 
           {/* Test Call Card */}
