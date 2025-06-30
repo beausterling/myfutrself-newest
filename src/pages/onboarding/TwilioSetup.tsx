@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser, useAuth } from '@clerk/clerk-react';
-import { Phone, CheckCircle, AlertCircle, Speech, X, Mic, Headphones, VoiceNetwork } from 'lucide-react';
+import { Phone, CheckCircle, AlertCircle, Speech, X, Mic, Headphones, Network as VoiceNetwork } from 'lucide-react';
 import { useOnboarding } from '../../contexts/OnboardingContext';
 import { createAuthenticatedSupabaseClient } from '../../lib/supabase';
 import VoiceChatModal from '../../components/VoiceChatModal';
