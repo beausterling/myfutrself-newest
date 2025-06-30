@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser, useAuth } from '@clerk/clerk-react';
-import { Phone, CheckCircle, AlertCircle, Speech } from 'lucide-react';
+import { Phone, CheckCircle, AlertCircle, Speech, X } from 'lucide-react';
 import { useOnboarding } from '../../contexts/OnboardingContext';
 import { createAuthenticatedSupabaseClient } from '../../lib/supabase';
 
@@ -15,7 +15,34 @@ const TwilioSetup = () => {
   const [testCallStatus, setTestCallStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [aiMessage, setAiMessage] = useState<string | null>(null);
+  const [showPhoneModal, setShowPhoneModal] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [callSid, setCallSid] = useState<string | null>(null);
+
+  // Disable background scrolling when modal is open
+  useEffect(() => {
+    if (showPhoneModal) {
+      const originalBodyOverflow = document.body.style.overflow;
+      const originalHtmlOverflow = document.documentElement.style.overflow;
+      
+      document.documentElement.style.overflow = 'hidden';
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
+      document.body.style.top = `-${window.scrollY}px`;
+      
+      const scrollY = window.scrollY;
+      
+      return () => {
+        document.documentElement.style.overflow = originalHtmlOverflow;
+        document.body.style.overflow = originalBodyOverflow;
+        document.body.style.position = '';
+        document.body.style.width = '';
+        document.body.style.top = '';
+        window.scrollTo(0, scrollY);
+      };
+    }
+  }, [showPhoneModal]);
 
   // Handle scroll effect for blur
   useEffect(() => {
@@ -28,14 +55,49 @@ const TwilioSetup = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  const formatPhoneNumber = (value: string) => {
+    // Remove all non-digit characters
+    const digits = value.replace(/\D/g, '');
+    
+    // Format as (XXX) XXX-XXXX
+    if (digits.length <= 3) {
+      return digits;
+    } else if (digits.length <= 6) {
+      return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+    } else {
+      return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
+    }
+  };
+
+  const handlePhoneNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatPhoneNumber(e.target.value);
+    setPhoneNumber(formatted);
+  };
+
+  const isValidPhoneNumber = (phone: string) => {
+    const digits = phone.replace(/\D/g, '');
+    return digits.length === 10;
+  };
+
+  const getE164PhoneNumber = (phone: string) => {
+    const digits = phone.replace(/\D/g, '');
+    return `+1${digits}`;
+  };
+
   const handleTestCall = async () => {
+    if (!phoneNumber || !isValidPhoneNumber(phoneNumber)) {
+      setError('Please enter a valid phone number first.');
+      return;
+    }
+
     setIsTestingCall(true);
     setTestCallStatus('idle');
     setError(null);
-    setAiMessage(null);
+    setCallSid(null);
+    setShowPhoneModal(false);
     
     try {
-      console.log('🔄 Starting AI chat completion test...');
+      console.log('🔄 Starting test call...');
       
       if (!user?.id) {
         throw new Error('User authentication required');
@@ -53,16 +115,16 @@ const TwilioSetup = () => {
         throw new Error('Supabase URL not found in environment variables');
       }
 
-      const edgeFunctionUrl = `${supabaseUrl}/functions/v1/openai-chat-completion`;
+      const edgeFunctionUrl = `${supabaseUrl}/functions/v1/twilio-call-handler/initiate-call`;
       console.log('🔗 Edge Function URL:', edgeFunctionUrl);
 
       // Prepare request body
       const requestBody = {
         user_id: user.id,
-        context: 'This is a test call to verify that your future self can successfully reach you and provide personalized guidance based on your goals.'
+        to_phone_number: getE164PhoneNumber(phoneNumber)
       };
 
-      console.log('📤 Sending chat completion request:', requestBody);
+      console.log('📤 Sending call initiation request:', requestBody);
 
       // Make request to Edge Function
       const response = await fetch(edgeFunctionUrl, {
@@ -81,21 +143,21 @@ const TwilioSetup = () => {
           statusText: response.statusText,
           error: errorData
         });
-        throw new Error(errorData.error || `AI chat completion failed: ${response.status} ${response.statusText}`);
+        throw new Error(errorData.error || `Call initiation failed: ${response.status} ${response.statusText}`);
       }
 
       const result = await response.json();
       console.log('✅ AI chat completion successful:', result);
 
       if (!result.success) {
-        throw new Error(result.error || 'AI chat completion failed');
+        throw new Error(result.error || 'Call initiation failed');
       }
 
-      console.log('🎯 AI message generated:', result.message);
-      setAiMessage(result.message);
+      console.log('🎯 Call initiated with SID:', result.call_sid);
+      setCallSid(result.call_sid);
       
       setTestCallStatus('success');
-      console.log('✅ Test call simulation completed successfully');
+      console.log('✅ Test call initiated successfully');
       
     } catch (error) {
       console.error('❌ Test call failed:', error);
@@ -104,6 +166,17 @@ const TwilioSetup = () => {
     } finally {
       setIsTestingCall(false);
     }
+  };
+
+  const handleStartTestCall = () => {
+    setShowPhoneModal(true);
+    setError(null);
+  };
+
+  const handleModalClose = () => {
+    setShowPhoneModal(false);
+    setPhoneNumber('');
+    setError(null);
   };
 
   const handleCreateNewNumber = () => {
@@ -174,6 +247,86 @@ const TwilioSetup = () => {
 
   return (
     <div className={`onboarding-container ${isScrolled ? 'scrolled' : ''}`}>
+      {/* Phone Number Modal */}
+      {showPhoneModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-bg-primary border border-white/20 rounded-2xl p-6 max-w-md w-full relative">
+            <button
+              onClick={handleModalClose}
+              className="absolute top-4 right-4 text-white/60 hover:text-white transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary-aqua/20 mb-4">
+                <Phone className="w-8 h-8 text-primary-aqua" />
+              </div>
+              <h3 className="text-2xl font-bold mb-3 font-heading">Enter Your Phone Number</h3>
+              <p className="text-white/70 mb-6 text-sm font-body">
+                We'll call this number to test your future self's voice and AI responses.
+              </p>
+              
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-text-secondary mb-2 font-heading">
+                  Phone Number
+                </label>
+                <input
+                  type="tel"
+                  value={phoneNumber}
+                  onChange={handlePhoneNumberChange}
+                  placeholder="(555) 123-4567"
+                  className="w-full bg-white/5 text-white border border-white/20 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-aqua/50 focus:border-transparent backdrop-blur-lg text-base font-body"
+                  maxLength={14}
+                />
+                {phoneNumber && !isValidPhoneNumber(phoneNumber) && (
+                  <p className="text-red-400 text-sm mt-2 font-body">
+                    Please enter a valid 10-digit phone number
+                  </p>
+                )}
+              </div>
+              
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 mb-6">
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="text-white text-xs font-bold">ℹ️</span>
+                  </div>
+                  <div className="text-left">
+                    <h4 className="text-blue-400 font-semibold text-sm mb-2 font-heading">What to Expect</h4>
+                    <ul className="text-blue-300 text-xs space-y-1 font-body">
+                      <li>• You'll receive a call within 30 seconds</li>
+                      <li>• Your future self will greet you personally</li>
+                      <li>• You can have a real conversation about your goals</li>
+                      <li>• The call will last about 2-3 minutes</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={handleModalClose}
+                  className="flex-1 btn btn-outline font-heading"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleTestCall}
+                  disabled={!phoneNumber || !isValidPhoneNumber(phoneNumber)}
+                  className={`flex-1 btn font-heading transition-all duration-300 ${
+                    phoneNumber && isValidPhoneNumber(phoneNumber)
+                      ? 'btn-primary' 
+                      : 'bg-transparent text-gray-400 border border-gray-600 cursor-not-allowed hover:bg-transparent'
+                  }`}
+                >
+                  Call Me Now
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main content */}
       <div className="onboarding-content container mx-auto px-4 max-w-2xl">
         <div className="text-center mb-16">
@@ -259,12 +412,12 @@ const TwilioSetup = () => {
                   <div>
                     <p className="text-green-400 font-medium font-heading">Test Call Successful!</p>
                     <p className="text-green-300 text-sm mt-1 font-body">
-                      Your future self is ready to guide you. Here's what they would say:
+                      Your future self successfully called you! The AI voice system is working perfectly.
                     </p>
-                    {aiMessage && (
+                    {callSid && (
                       <div className="mt-3 p-3 bg-green-500/5 border border-green-500/10 rounded-lg">
-                        <p className="text-green-200 italic font-body">
-                          "{aiMessage}"
+                        <p className="text-green-200 text-xs font-body">
+                          Call ID: {callSid}
                         </p>
                       </div>
                     )}
@@ -288,7 +441,7 @@ const TwilioSetup = () => {
             )}
 
             <button
-              onClick={handleTestCall}
+              onClick={handleStartTestCall}
               disabled={isTestingCall || testCallStatus === 'success'}
               className={`btn w-full text-lg py-4 font-heading transition-all duration-300 ${
                 testCallStatus === 'success'
@@ -302,21 +455,21 @@ const TwilioSetup = () => {
                 <>
                   <div className="flex items-center justify-center gap-3">
                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Testing Connection...</span>
+                    <span>Calling You Now...</span>
                   </div>
                 </>
               ) : testCallStatus === 'success' ? (
                 <>
                   <div className="flex items-center justify-center gap-3">
                     <CheckCircle className="w-5 h-5" />
-                    <span>Test Completed</span>
+                    <span>Call Completed</span>
                   </div>
                 </>
               ) : (
                 <>
                   <div className="flex items-center justify-center gap-3">
                     <Phone className="w-5 h-5" />
-                    <span>Start Test Call</span>
+                    <span>Test Call with AI</span>
                   </div>
                 </>
               )}
@@ -329,19 +482,19 @@ const TwilioSetup = () => {
             <ul className="space-y-3 text-sm font-body text-white/80">
               <li className="flex items-start gap-3">
                 <div className="w-2 h-2 bg-primary-aqua rounded-full mt-2 flex-shrink-0"></div>
-                <span>Your future self will analyze your current goals and progress</span>
+                <span>You'll receive a real phone call from your future self</span>
               </li>
               <li className="flex items-start gap-3">
                 <div className="w-2 h-2 bg-primary-aqua rounded-full mt-2 flex-shrink-0"></div>
-                <span>They'll generate a personalized message based on your motivations and obstacles</span>
+                <span>The AI will speak using your selected voice</span>
               </li>
               <li className="flex items-start gap-3">
                 <div className="w-2 h-2 bg-primary-aqua rounded-full mt-2 flex-shrink-0"></div>
-                <span>You'll see exactly what they would say during a real call</span>
+                <span>You can have a real conversation about your goals</span>
               </li>
               <li className="flex items-start gap-3">
                 <div className="w-2 h-2 bg-primary-aqua rounded-full mt-2 flex-shrink-0"></div>
-                <span>This verifies that the AI system understands your goals and can provide relevant guidance</span>
+                <span>The AI will provide personalized motivation and accountability</span>
               </li>
             </ul>
           </div>
