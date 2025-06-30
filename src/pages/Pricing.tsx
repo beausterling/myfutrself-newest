@@ -226,9 +226,15 @@ const Pricing = () => {
       </div>
 
       {/* Gradient Blur Transition */}
-      <div className="relative h-32 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-primary-aqua/5 via-primary-blue/3 to-transparent" />
-        <div className="absolute inset-0 backdrop-blur-sm bg-gradient-to-b from-transparent via-bg-primary/20 to-bg-primary/40" />
+      <div className="relative h-48 overflow-hidden">
+        {/* Multiple layered gradients for smoother transition */}
+        <div className="absolute inset-0 bg-gradient-to-b from-primary-aqua/8 via-primary-blue/6 via-primary-aqua/4 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-bg-primary/10 via-bg-primary/30 to-bg-primary/60" />
+        <div className="absolute inset-0 backdrop-blur-md bg-gradient-to-b from-transparent via-bg-primary/15 to-bg-primary/50" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-bg-primary/80" />
+        
+        {/* Additional noise/texture overlay for smoother blending */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-bg-secondary/20 to-bg-secondary/40 opacity-60" />
       </div>
 
       {/* Compact Pricing Cards */}
