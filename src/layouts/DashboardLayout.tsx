@@ -179,28 +179,3 @@ const DashboardLayout = ({ theme, toggleTheme }: DashboardLayoutProps) => {
 };
 
 export default DashboardLayout;
-
-          >
-            <Menu size={20} className="text-white" />
-          </button>
-          
-          <div className="ml-auto flex items-center space-x-4">
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-full hover:bg-white/10 text-white"
-            >
-              {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
-            </button>
-            <UserButton afterSignOutUrl="/" />
-          </div>
-        </header>
-        
-        <main className="flex-1 overflow-y-auto p-4 bg-gradient-to-br from-bg-primary to-bg-secondary">
-          <Outlet />
-        </main>
-      </div>
-    </div>
-  );
-};
-
-export default DashboardLayout;
