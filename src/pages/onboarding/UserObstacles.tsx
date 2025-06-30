@@ -98,7 +98,7 @@ const UserObstacles = () => {
   const { user } = useUser();
   const { getToken } = useAuth();
   const { state, dispatch } = useOnboarding();
-  const [newObstacle, setNewObstacle] = useState('');
+  const [newObstacles, setNewObstacles] = useState<Record<string, string>>({});
   const [isScrolled, setIsScrolled] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -720,9 +720,12 @@ const UserObstacles = () => {
                         {/* Add Obstacle Input */}
                         <div className="flex gap-3 mb-4">
                           <input
-                            type="text"
-                            value={newObstacle}
-                            onChange={(e) => setNewObstacle(e.target.value)}
+                            type="text" 
+                            value={newObstacles[goalKey] || ''}
+                            onChange={(e) => setNewObstacles(prev => ({
+                              ...prev,
+                              [goalKey]: e.target.value
+                            }))}
                             placeholder={currentObstacles.length > 0 ? "Anything else?" : "What obstacles might you face?"}
                             className="flex-grow bg-white/5 text-white border border-white/20 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:border-transparent backdrop-blur-lg text-base font-body placeholder-white/40"
                             style={{ 
@@ -730,23 +733,23 @@ const UserObstacles = () => {
                             }}
                             onKeyPress={(e) => {
                               if (e.key === 'Enter') {
-                                handleAddObstacle(goalKey, newObstacle);
-                                setNewObstacle('');
+                                handleAddObstacle(goalKey, newObstacles[goalKey] || '');
+                                setNewObstacles(prev => ({ ...prev, [goalKey]: '' }));
                               }
                             }}
                             disabled={isSaving}
                           />
                           <button
                             onClick={() => {
-                              handleAddObstacle(goalKey, newObstacle);
-                              setNewObstacle('');
+                              handleAddObstacle(goalKey, newObstacles[goalKey] || '');
+                              setNewObstacles(prev => ({ ...prev, [goalKey]: '' }));
                             }}
                             className="px-6 py-3 rounded-xl font-medium transition-colors font-heading"
                             style={{
-                              backgroundColor: newObstacle.trim() ? categoryIconData.color : 'rgba(255, 255, 255, 0.1)',
-                              color: newObstacle.trim() ? 'white' : 'rgba(255, 255, 255, 0.4)'
+                              backgroundColor: newObstacles[goalKey]?.trim() ? categoryIconData.color : 'rgba(255, 255, 255, 0.1)',
+                              color: newObstacles[goalKey]?.trim() ? 'white' : 'rgba(255, 255, 255, 0.4)'
                             }}
-                            disabled={!newObstacle.trim() || isSaving}
+                            disabled={!newObstacles[goalKey]?.trim() || isSaving}
                           >
                             <Plus className="w-5 h-5" />
                           </button>
