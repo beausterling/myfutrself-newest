@@ -207,7 +207,6 @@ async function handleUserCreated(
         user_id: userData.id,
         avatar_url: userData.image_url || null,
         voice_preference: 'friendly_mentor', // Default voice
-        call_mode: 'user_initiated', // Default call mode
         onboarding_completed: false,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
