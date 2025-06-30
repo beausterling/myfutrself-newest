@@ -598,8 +598,6 @@ Deno.serve(async (req) => {
         originalHost: regularHost,
         forwardedHost: forwardedHost,
         selectedHost: host,
-        pathname: pathname,
-        search: search,
         fullUrl: fullUrl,
         rawBodyLength: rawBody.length,
         paramsCount: Object.keys(params).length,
