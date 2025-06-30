@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser, useAuth } from '@clerk/clerk-react';
-import { Phone, CheckCircle, AlertCircle, Speech, X, Mic, Headphones, Network as VoiceNetwork } from 'lucide-react';
+import { Phone, CheckCircle, AlertCircle, Speech, X, Mic, Headphones, Network as VoiceNetwork, Loader2 } from 'lucide-react';
 import { useOnboarding } from '../../contexts/OnboardingContext';
 import { createAuthenticatedSupabaseClient } from '../../lib/supabase';
 import VoiceChatModal from '../../components/VoiceChatModal';
@@ -22,6 +22,8 @@ const TwilioSetup = () => {
   const [showVoiceChatModal, setShowVoiceChatModal] = useState(false);
   const [callSid, setCallSid] = useState<string | null>(null);
   const [futurePhotoUrl, setFuturePhotoUrl] = useState<string | null>(null);
+  const [isTestingVoice, setIsTestingVoice] = useState(false);
+  const [voiceAudio, setVoiceAudio] = useState<HTMLAudioElement | null>(null);
 
   // Disable background scrolling when modal is open
   useEffect(() => {
@@ -209,6 +211,118 @@ const TwilioSetup = () => {
     setShowVoiceChatModal(false);
     setFuturePhotoUrl(null);
   };
+
+  // Test voice clone by playing a sample audio using the user's voice preference
+  const handleTestVoiceClone = async () => {
+    if (!user?.id) {
+      setError('User authentication required');
+      return;
+    }
+
+    try {
+      setIsTestingVoice(true);
+      setError(null);
+      console.log('🔄 Testing voice clone...');
+      
+      // Get authentication token
+      const token = await getToken({ template: 'supabase' });
+      if (!token) {
+        throw new Error('No authentication token available');
+      }
+
+      // Get user's voice preference
+      const supabase = createAuthenticatedSupabaseClient(token);
+      const { data: userProfile, error: profileError } = await supabase
+        .from('user_profiles')
+        .select('voice_preference')
+        .eq('user_id', user.id)
+        .single();
+
+      if (profileError) {
+        throw new Error(`Failed to get voice preference: ${profileError.message}`);
+      }
+
+      const voiceId = userProfile?.voice_preference;
+      if (!voiceId) {
+        throw new Error('No voice preference found. Please select a voice first.');
+      }
+
+      console.log('✅ Retrieved voice preference:', voiceId);
+
+      // Construct Edge Function URL
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      if (!supabaseUrl) {
+        throw new Error('Supabase URL not found in environment variables');
+      }
+
+      // Sample text for voice test
+      const sampleText = "Hello! This is a test of your future self's voice. I'm excited to help guide you on your journey to becoming your best self. Remember, I'm here to support you every step of the way as you work toward your goals. The voice you're hearing now is the one I'll use when we have our conversations. Does this sound good to you?";
+
+      console.log('🔄 Calling ElevenLabs TTS API via Edge Function...');
+      const response = await fetch(`${supabaseUrl}/functions/v1/elevenlabs-proxy/tts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          voiceId,
+          text: sampleText
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `TTS request failed: ${response.status} ${response.statusText}`);
+      }
+
+      // Get audio blob from response
+      const audioBlob = await response.blob();
+      console.log('✅ Received audio response:', audioBlob.size, 'bytes');
+
+      // Create audio element and play
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+      
+      // Set up event handlers
+      audio.onended = () => {
+        console.log('✅ Audio playback completed');
+        setIsTestingVoice(false);
+        setVoiceAudio(null);
+        URL.revokeObjectURL(audioUrl);
+      };
+      
+      audio.onerror = (e) => {
+        console.error('❌ Audio playback error:', e);
+        setError('Failed to play audio. Please try again.');
+        setIsTestingVoice(false);
+        setVoiceAudio(null);
+        URL.revokeObjectURL(audioUrl);
+      };
+
+      // Store reference to audio element
+      setVoiceAudio(audio);
+      
+      // Start playback
+      await audio.play();
+      console.log('✅ Started audio playback');
+
+    } catch (error) {
+      console.error('❌ Error testing voice clone:', error);
+      setError(error instanceof Error ? error.message : 'Failed to test voice clone');
+      setIsTestingVoice(false);
+    }
+  };
+
+  // Clean up audio on component unmount
+  useEffect(() => {
+    return () => {
+      if (voiceAudio) {
+        voiceAudio.pause();
+        voiceAudio.src = '';
+      }
+    };
+  }, []);
 
   const handleStartTestCall = () => {
     setShowPhoneModal(true);
@@ -547,15 +661,27 @@ const TwilioSetup = () => {
               Test your voice clone to ensure it sounds like you want it to. This will process your voice recording and generate a sample.
             </p>
 
-            <button
-              onClick={() => console.log('Test voice clone clicked')}
-              className="btn btn-primary w-full text-lg py-4 font-heading"
-            >
-              <div className="flex items-center justify-center gap-3">
-                <VoiceNetwork className="w-5 h-5" />
-                <span>Test Voice Clone</span>
-              </div>
-            </button>
+            {isTestingVoice ? (
+              <button
+                className="btn btn-primary w-full text-lg py-4 font-heading"
+                disabled={true}
+              >
+                <div className="flex items-center justify-center gap-3">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Playing Voice Sample...</span>
+                </div>
+              </button>
+            ) : (
+              <button
+                onClick={handleTestVoiceClone}
+                className="btn btn-primary w-full text-lg py-4 font-heading"
+              >
+                <div className="flex items-center justify-center gap-3">
+                  <VoiceNetwork className="w-5 h-5" />
+                  <span>Test Voice Clone</span>
+                </div>
+              </button>
+            )}
           </div>
         </div>
 
