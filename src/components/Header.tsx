@@ -94,6 +94,26 @@ const Header = ({ theme, toggleTheme }: { theme: string; toggleTheme: () => void
             </Link>
           </SignedOut>
         </div>
+
+        {/* Mobile Menu Button */}
+        <div className="md:hidden">
+          <SignedIn>
+            <button 
+              onClick={toggleMenu}
+              className="btn btn-ghost p-2"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+          </SignedIn>
+          <SignedOut>
+            <button 
+              onClick={toggleMenu}
+              className="btn btn-ghost p-2"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+          </SignedOut>
+        </div>
       </nav>
 
       {/* Right-Side Menu (Mobile and Desktop) */}
@@ -152,27 +172,6 @@ const Header = ({ theme, toggleTheme }: { theme: string; toggleTheme: () => void
                     </div>
                   </Link>
                   
-                  <button
-                    onClick={() => {
-                      toggleTheme();
-                      setIsMenuOpen(false);
-                    }}
-                    className="w-full flex items-center gap-3 p-4 bg-white/5 rounded-xl border border-white/10 hover:bg-white/10 transition-colors"
-                  >
-                    <div className="w-10 h-10 bg-gradient-to-r from-gray-500 to-gray-600 rounded-full flex items-center justify-center text-white">
-                      {theme === 'light' ? '🌙' : '☀️'}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-white font-medium font-heading">
-                          {theme === 'light' ? 'Dark Mode' : 'Light Mode'}
-                        </span>
-                      </div>
-                      <p className="text-white/60 text-sm font-body">
-                        Switch to {theme === 'light' ? 'dark' : 'light'} theme
-                      </p>
-                    </div>
-                  </button>
                 </div>
               </SignedIn>
               
@@ -191,22 +190,6 @@ const Header = ({ theme, toggleTheme }: { theme: string; toggleTheme: () => void
                     </button>
                   </Link>
                   
-                  <button
-                    onClick={() => {
-                      toggleTheme();
-                      setIsMenuOpen(false);
-                    }}
-                    className="w-full flex items-center gap-3 p-4 bg-white/5 rounded-xl border border-white/10 hover:bg-white/10 transition-colors"
-                  >
-                    <div className="w-10 h-10 bg-gradient-to-r from-gray-500 to-gray-600 rounded-full flex items-center justify-center text-white">
-                      {theme === 'light' ? '🌙' : '☀️'}
-                    </div>
-                    <div>
-                      <span className="text-white font-medium font-heading">
-                        {theme === 'light' ? 'Dark Mode' : 'Light Mode'}
-                      </span>
-                    </div>
-                  </button>
                 </div>
               </SignedOut>
             </div>
