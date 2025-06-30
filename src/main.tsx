@@ -298,6 +298,80 @@ const ClerkProviderWithNavigate = () => {
           'div[role="button"]': {
             border: '1px solid rgba(255, 255, 255, 0.3) !important',
             borderColor: 'rgba(255, 255, 255, 0.3) !important'
+          },
+          
+          // Target text buttons and links - remove borders
+          'button[type="button"]:not([class*="primary"]):not([class*="secondary"]):not([class*="social"])': {
+            border: 'none !important',
+            borderColor: 'transparent !important',
+            backgroundColor: 'transparent !important',
+            '&:hover': {
+              backgroundColor: 'rgba(255, 255, 255, 0.1) !important',
+              border: 'none !important',
+              borderColor: 'transparent !important'
+            }
+          },
+          
+          // Target Clerk-specific text buttons and links
+          'button[data-localization-key*="resend"]': {
+            border: 'none !important',
+            borderColor: 'transparent !important',
+            backgroundColor: 'transparent !important',
+            '&:hover': {
+              backgroundColor: 'rgba(255, 255, 255, 0.1) !important',
+              border: 'none !important',
+              borderColor: 'transparent !important'
+            }
+          },
+          
+          // Target any button that contains text like "resend", "forgot", "back", etc.
+          'button[class*="link"]': {
+            border: 'none !important',
+            borderColor: 'transparent !important',
+            backgroundColor: 'transparent !important',
+            '&:hover': {
+              backgroundColor: 'rgba(255, 255, 255, 0.1) !important',
+              border: 'none !important',
+              borderColor: 'transparent !important'
+            }
+          },
+          
+          // Target Clerk footer action links and similar elements
+          footerActionLink: {
+            border: 'none !important',
+            borderColor: 'transparent !important',
+            backgroundColor: 'transparent !important',
+            '&:hover': {
+              backgroundColor: 'rgba(255, 255, 255, 0.1) !important',
+              border: 'none !important',
+              borderColor: 'transparent !important'
+            }
+          },
+          
+          // Target any element with text-like appearance
+          'a': {
+            border: 'none !important',
+            borderColor: 'transparent !important',
+            backgroundColor: 'transparent !important',
+            '&:hover': {
+              backgroundColor: 'rgba(255, 255, 255, 0.1) !important',
+              border: 'none !important',
+              borderColor: 'transparent !important'
+            }
+          },
+          
+          // Specific targeting for Clerk internal classes that might be text buttons
+          '[class*="cl-internal"]': {
+            '&:not([class*="primary"]):not([class*="secondary"]):not([class*="social"]):not(input):not(select)': {
+              border: 'none !important',
+              borderColor: 'transparent !important',
+              backgroundColor: 'transparent !important',
+              '&:hover': {
+                backgroundColor: 'rgba(255, 255, 255, 0.1) !important',
+                border: 'none !important',
+                borderColor: 'transparent !important'
+              }
+            }
           }
         },
         // Additional global CSS to ensure coverage
