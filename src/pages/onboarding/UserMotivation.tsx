@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser, useAuth, useClerk } from '@clerk/clerk-react';
-import { Heart, Plus, X, AlertCircle, Trash2 } from 'lucide-react';
+import { Heart, AlertCircle } from 'lucide-react';
 import { useOnboarding } from '../../contexts/OnboardingContext';
 import { createAuthenticatedSupabaseClient } from '../../lib/supabase';
 
@@ -15,7 +15,6 @@ interface Motivation {
   id: string;
   goal_id: string;
   motivation_text: string;
-  obstacles: string[];
 }
 
 const UserMotivation = () => {
@@ -26,14 +25,10 @@ const UserMotivation = () => {
   const { state, dispatch } = useOnboarding();
   const [isScrolled, setIsScrolled] = useState(false);
   const [goals, setGoals] = useState<Goal[]>([]);
-  const [motivations, setMotivations] = useState<Record<string, Motivation>>({});
+  const [motivations, setMotivations] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [hasLoadedFromDB, setHasLoadedFromDB] = useState(false);
-  
-  // Individual state for each goal's obstacle input - this is the key fix
-  const [obstacleInputs, setObstacleInputs] = useState<Record<string, string>>({});
 
   // Handle scroll effect for blur
   useEffect(() => {
@@ -49,18 +44,21 @@ const UserMotivation = () => {
   // Load goals and existing motivations
   useEffect(() => {
     const loadGoalsAndMotivations = async () => {
-      if (!user?.id || hasLoadedFromDB) {
+      if (!user?.id) {
+        console.log('❌ No user ID available, skipping goals load');
+        setIsLoading(false);
         return;
       }
 
       try {
+        setIsLoading(true);
+        setError(null);
         console.log('🔄 Loading goals and motivations for user:', user.id);
         
         const token = await getToken({ template: 'supabase' });
         if (!token) {
           console.error('❌ No Clerk token available');
-          setError('Authentication failed. Please refresh and try again.');
-          return;
+          throw new Error('Authentication token not available');
         }
 
         const supabase = createAuthenticatedSupabaseClient(token);
@@ -77,13 +75,13 @@ const UserMotivation = () => {
 
         if (goalsError) {
           console.error('❌ Error loading goals:', goalsError);
-          setError(`Failed to load goals: ${goalsError.message}`);
-          return;
+          throw new Error(`Failed to load goals: ${goalsError.message}`);
         }
 
         if (!goalsData || goalsData.length === 0) {
-          console.log('❌ No goals found for user');
-          setError('No goals found. Please go back and set up your goals first.');
+          console.log('⚠️ No goals found for user');
+          setGoals([]);
+          setIsLoading(false);
           return;
         }
 
@@ -94,131 +92,50 @@ const UserMotivation = () => {
           category_name: goal.categories?.name || 'Unknown'
         }));
 
-        console.log('✅ Goals loaded:', transformedGoals.length);
-        console.log('🎯 Goal IDs:', transformedGoals.map(g => ({ id: g.id, title: g.title })));
+        console.log('✅ Goals loaded successfully:', transformedGoals.length);
         setGoals(transformedGoals);
 
         // Load existing motivations
+        const goalIds = transformedGoals.map(g => g.id);
         const { data: motivationsData, error: motivationsError } = await supabase
           .from('motivations')
-          .select('*')
-          .in('goal_id', transformedGoals.map(g => g.id));
+          .select('id, goal_id, motivation_text')
+          .in('goal_id', goalIds);
 
         if (motivationsError) {
           console.error('❌ Error loading motivations:', motivationsError);
-          setError(`Failed to load existing motivations: ${motivationsError.message}`);
-          return;
+          throw new Error(`Failed to load motivations: ${motivationsError.message}`);
         }
 
-        // Transform motivations data into a record keyed by goal_id
-        const motivationsRecord: Record<string, Motivation> = {};
-        const initialObstacleInputs: Record<string, string> = {};
-        
+        // Transform motivations into a map
+        const motivationsMap: Record<string, string> = {};
         if (motivationsData) {
-          motivationsData.forEach(motivation => {
-            motivationsRecord[motivation.goal_id] = {
-              id: motivation.id,
-              goal_id: motivation.goal_id,
-              motivation_text: motivation.motivation_text || '',
-              obstacles: motivation.obstacles || []
-            };
+          motivationsData.forEach((motivation: Motivation) => {
+            if (motivation.motivation_text) {
+              motivationsMap[motivation.goal_id] = motivation.motivation_text;
+            }
           });
         }
 
-        // Initialize obstacle inputs for all goals (empty string for each goal)
-        transformedGoals.forEach(goal => {
-          initialObstacleInputs[goal.id] = '';
-        });
+        console.log('✅ Motivations loaded successfully:', Object.keys(motivationsMap).length);
+        setMotivations(motivationsMap);
 
-        console.log('✅ Motivations loaded:', Object.keys(motivationsRecord).length);
-        console.log('🎯 Initial obstacle inputs:', initialObstacleInputs);
-        setMotivations(motivationsRecord);
-        setObstacleInputs(initialObstacleInputs);
-        setHasLoadedFromDB(true);
-        
       } catch (error) {
         console.error('❌ Error loading goals and motivations:', error);
-        setError('Failed to load data. Please refresh and try again.');
+        setError(error instanceof Error ? error.message : 'Failed to load goals and motivations');
       } finally {
         setIsLoading(false);
       }
     };
 
     loadGoalsAndMotivations();
-  }, [user?.id, getToken, hasLoadedFromDB]);
+  }, [user?.id, getToken]);
 
   const handleMotivationChange = (goalId: string, value: string) => {
-    console.log('📝 Motivation change for goal:', goalId, 'Length:', value.length);
+    console.log('📝 Motivation changed for goal:', goalId, 'Value length:', value.length);
     setMotivations(prev => ({
       ...prev,
-      [goalId]: {
-        ...prev[goalId],
-        goal_id: goalId,
-        motivation_text: value,
-        obstacles: prev[goalId]?.obstacles || [],
-        id: prev[goalId]?.id || ''
-      }
-    }));
-  };
-
-  // Fixed: Handle obstacle input change for specific goal
-  const handleObstacleInputChange = (goalId: string, value: string) => {
-    console.log('🎯 OBSTACLE INPUT CHANGE - Goal ID:', goalId, 'Value:', value, 'Length:', value.length);
-    console.log('🔍 Current obstacle inputs before change:', obstacleInputs);
-    
-    setObstacleInputs(prev => {
-      const newState = {
-        ...prev,
-        [goalId]: value
-      };
-      console.log('🔄 New obstacle inputs state:', newState);
-      return newState;
-    });
-  };
-
-  // Fixed: Add obstacle for specific goal
-  const handleAddObstacle = (goalId: string) => {
-    const obstacleText = obstacleInputs[goalId]?.trim();
-    console.log('➕ Adding obstacle for goal:', goalId, 'Text:', obstacleText);
-    
-    if (!obstacleText) {
-      console.log('⚠️ No obstacle text to add for goal:', goalId);
-      return;
-    }
-
-    setMotivations(prev => ({
-      ...prev,
-      [goalId]: {
-        ...prev[goalId],
-        goal_id: goalId,
-        motivation_text: prev[goalId]?.motivation_text || '',
-        obstacles: [...(prev[goalId]?.obstacles || []), obstacleText],
-        id: prev[goalId]?.id || ''
-      }
-    }));
-
-    // Clear the input for this specific goal
-    setObstacleInputs(prev => {
-      const newState = {
-        ...prev,
-        [goalId]: ''
-      };
-      console.log('🧹 Cleared input for goal:', goalId, 'New state:', newState);
-      return newState;
-    });
-  };
-
-  const handleRemoveObstacle = (goalId: string, obstacleIndex: number) => {
-    console.log('🗑️ Removing obstacle for goal:', goalId, 'Index:', obstacleIndex);
-    setMotivations(prev => ({
-      ...prev,
-      [goalId]: {
-        ...prev[goalId],
-        goal_id: goalId,
-        motivation_text: prev[goalId]?.motivation_text || '',
-        obstacles: prev[goalId]?.obstacles?.filter((_, index) => index !== obstacleIndex) || [],
-        id: prev[goalId]?.id || ''
-      }
+      [goalId]: value
     }));
   };
 
@@ -241,59 +158,60 @@ const UserMotivation = () => {
       
       // Process each goal's motivation
       for (const goal of goals) {
-        const motivation = motivations[goal.id];
+        const motivationText = motivations[goal.id]?.trim();
         
-        if (!motivation?.motivation_text?.trim()) {
-          console.warn(`⚠️ Skipping goal ${goal.id} - no motivation text`);
+        if (!motivationText) {
+          console.log('⚠️ Skipping empty motivation for goal:', goal.id);
           continue;
         }
 
-        const motivationData = {
-          goal_id: goal.id,
-          motivation_text: motivation.motivation_text.trim(),
-          obstacles: motivation.obstacles || [],
-          updated_at: new Date().toISOString()
-        };
+        console.log('💾 Saving motivation for goal:', goal.id);
 
-        if (motivation.id) {
+        // Check if motivation already exists
+        const { data: existingMotivation, error: checkError } = await supabase
+          .from('motivations')
+          .select('id')
+          .eq('goal_id', goal.id)
+          .maybeSingle();
+
+        if (checkError && checkError.code !== 'PGRST116') {
+          console.error('❌ Error checking existing motivation:', checkError);
+          throw new Error(`Failed to check existing motivation: ${checkError.message}`);
+        }
+
+        if (existingMotivation) {
           // Update existing motivation
-          console.log(`📝 Updating motivation for goal ${goal.id}`);
           const { error: updateError } = await supabase
             .from('motivations')
-            .update(motivationData)
-            .eq('id', motivation.id);
+            .update({
+              motivation_text: motivationText,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', existingMotivation.id);
 
           if (updateError) {
-            console.error(`❌ Error updating motivation for goal ${goal.id}:`, updateError);
-            throw new Error(`Failed to update motivation for "${goal.title}": ${updateError.message}`);
+            console.error('❌ Error updating motivation:', updateError);
+            throw new Error(`Failed to update motivation: ${updateError.message}`);
           }
+
+          console.log('✅ Motivation updated for goal:', goal.id);
         } else {
           // Create new motivation
-          console.log(`➕ Creating motivation for goal ${goal.id}`);
-          const { data: insertData, error: insertError } = await supabase
+          const { error: insertError } = await supabase
             .from('motivations')
             .insert({
-              ...motivationData,
-              created_at: new Date().toISOString()
-            })
-            .select()
-            .single();
+              goal_id: goal.id,
+              motivation_text: motivationText,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
 
           if (insertError) {
-            console.error(`❌ Error creating motivation for goal ${goal.id}:`, insertError);
-            throw new Error(`Failed to create motivation for "${goal.title}": ${insertError.message}`);
+            console.error('❌ Error creating motivation:', insertError);
+            throw new Error(`Failed to create motivation: ${insertError.message}`);
           }
 
-          // Update local state with the new ID
-          if (insertData) {
-            setMotivations(prev => ({
-              ...prev,
-              [goal.id]: {
-                ...prev[goal.id],
-                id: insertData.id
-              }
-            }));
-          }
+          console.log('✅ Motivation created for goal:', goal.id);
         }
       }
       
@@ -307,25 +225,23 @@ const UserMotivation = () => {
     }
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     // Validate that all goals have motivations
-    const goalsWithoutMotivations = goals.filter(goal => 
-      !motivations[goal.id]?.motivation_text?.trim()
-    );
-
+    const goalsWithoutMotivations = goals.filter(goal => !motivations[goal.id]?.trim());
+    
     if (goalsWithoutMotivations.length > 0) {
-      setError(`Please add motivations for: ${goalsWithoutMotivations.map(g => g.title).join(', ')}`);
+      setError(`Please add motivation for: ${goalsWithoutMotivations.map(g => g.title).join(', ')}`);
       return;
     }
 
-    // Save motivations before proceeding
-    saveMotivations().then(() => {
+    try {
+      await saveMotivations();
       dispatch({ type: 'NEXT_STEP' });
       navigate('/onboarding/user-obstacles');
-    }).catch((error) => {
+    } catch (error) {
       console.error('❌ Error saving motivations before proceeding:', error);
       setError('Failed to save motivations. Please try again.');
-    });
+    }
   };
 
   const handleBack = () => {
@@ -333,22 +249,43 @@ const UserMotivation = () => {
     navigate('/onboarding/user-goals');
   };
 
-  // Group goals by category
-  const goalsByCategory = goals.reduce((acc, goal) => {
-    const category = goal.category_name;
-    if (!acc[category]) {
-      acc[category] = [];
-    }
-    acc[category].push(goal);
-    return acc;
-  }, {} as Record<string, Goal[]>);
-
   const isValidMotivations = () => {
-    return goals.every(goal => motivations[goal.id]?.motivation_text?.trim());
+    return goals.every(goal => motivations[goal.id]?.trim());
   };
 
   if (isLoading) {
-    return null; // Let the main loading screen handle this
+    return (
+      <div className={`onboarding-container ${isScrolled ? 'scrolled' : ''}`}>
+        <div className="onboarding-content container mx-auto px-4 max-w-4xl">
+          <div className="text-center">
+            <div className="w-8 h-8 border-2 border-primary-aqua border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-white/70 font-body">Loading your goals...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (goals.length === 0) {
+    return (
+      <div className={`onboarding-container ${isScrolled ? 'scrolled' : ''}`}>
+        <div className="onboarding-content container mx-auto px-4 max-w-4xl">
+          <div className="text-center">
+            <AlertCircle className="w-12 h-12 text-white/40 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold mb-4 font-heading">No Goals Found</h2>
+            <p className="text-white/70 mb-8 font-body">
+              You need to set up your goals first before adding motivations.
+            </p>
+            <button 
+              onClick={() => navigate('/onboarding/user-goals')} 
+              className="btn btn-primary font-heading"
+            >
+              Go Back to Goals
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -357,11 +294,11 @@ const UserMotivation = () => {
       <div className="onboarding-content container mx-auto px-4 max-w-4xl">
         <div className="text-center mb-16">
           <div className="flex items-center justify-center gap-4 mb-4">
-            <Heart className="w-8 h-8 md:w-10 md:h-10 text-red-500" />
+            <Heart className="w-8 h-8 md:w-10 md:h-10 text-primary-aqua" />
             <h1 className="text-3xl md:text-4xl font-bold font-heading">What Motivates You?</h1>
           </div>
           <p className="text-text-secondary text-lg leading-relaxed font-body">
-            Tell us what drives you to achieve each of your goals. This helps your future self provide personalized motivation.
+            Understanding your deeper motivations will help your future self provide more meaningful guidance.
           </p>
         </div>
 
@@ -394,111 +331,29 @@ const UserMotivation = () => {
           </div>
         )}
 
-        {/* Goals by Category */}
-        <div className="space-y-8">
-          {Object.entries(goalsByCategory).map(([categoryName, categoryGoals]) => {
-            console.log('🏷️ Rendering category:', categoryName, 'with goals:', categoryGoals.map(g => g.id));
-            return (
-              <div key={categoryName} className="card">
-                <h3 className="text-xl font-semibold mb-6 font-heading text-primary-aqua">
-                  {categoryName}
-                </h3>
-                
-                <div className="space-y-6">
-                  {categoryGoals.map((goal) => {
-                    console.log('🎯 Rendering goal:', goal.id, 'Title:', goal.title);
-                    console.log('📋 Current obstacle input for this goal:', obstacleInputs[goal.id] || 'undefined');
-                    
-                    return (
-                      <div key={goal.id} className="bg-white/5 rounded-xl p-6 border border-white/10">
-                        <h4 className="text-lg font-semibold mb-4 font-heading text-white">
-                          {goal.title}
-                        </h4>
-                        
-                        {/* Motivation Text Area */}
-                        <div className="mb-6">
-                          <label className="block text-sm font-medium text-text-secondary mb-2 font-heading">
-                            What motivates you to achieve this goal?
-                          </label>
-                          <textarea
-                            value={motivations[goal.id]?.motivation_text || ''}
-                            onChange={(e) => handleMotivationChange(goal.id, e.target.value)}
-                            placeholder="Describe what drives you to achieve this goal..."
-                            className="w-full bg-white/5 text-white border border-white/20 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-aqua/50 focus:border-transparent backdrop-blur-lg resize-none font-body"
-                            rows={3}
-                            required
-                          />
-                        </div>
-
-                        {/* Obstacles Section */}
-                        <div>
-                          <label className="block text-sm font-medium text-text-secondary mb-2 font-heading">
-                            What obstacles might you face?
-                          </label>
-                          
-                          {/* Existing Obstacles */}
-                          {motivations[goal.id]?.obstacles && motivations[goal.id].obstacles.length > 0 && (
-                            <div className="mb-3 space-y-2">
-                              {motivations[goal.id].obstacles.map((obstacle, index) => (
-                                <div key={index} className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2 border border-white/10">
-                                  <span className="flex-1 text-white text-sm font-body">{obstacle}</span>
-                                  <button
-                                    onClick={() => handleRemoveObstacle(goal.id, index)}
-                                    className="text-red-400 hover:text-red-300 transition-colors p-1"
-                                    type="button"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-
-                          {/* Add Obstacle Input - Fixed: Each goal has its own input with explicit key */}
-                          <div className="flex gap-2">
-                            <input
-                              key={`obstacle-input-${goal.id}`} // CRITICAL: Explicit key for the input element
-                              type="text"
-                              value={obstacleInputs[goal.id] || ''}
-                              onChange={(e) => {
-                                console.log('🔥 INPUT CHANGE EVENT - Goal ID:', goal.id, 'New Value:', e.target.value);
-                                handleObstacleInputChange(goal.id, e.target.value);
-                              }}
-                              onKeyPress={(e) => {
-                                if (e.key === 'Enter') {
-                                  e.preventDefault();
-                                  console.log('⌨️ Enter key pressed for goal:', goal.id);
-                                  handleAddObstacle(goal.id);
-                                }
-                              }}
-                              placeholder="Add an obstacle..."
-                              className="flex-1 bg-white/5 text-white border border-white/20 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-aqua/50 focus:border-transparent backdrop-blur-lg text-sm font-body"
-                              data-goal-id={goal.id} // Additional debugging attribute
-                            />
-                            <button
-                              onClick={() => {
-                                console.log('🔘 Add button clicked for goal:', goal.id);
-                                handleAddObstacle(goal.id);
-                              }}
-                              disabled={!obstacleInputs[goal.id]?.trim()}
-                              className={`px-3 py-2 rounded-lg transition-colors ${
-                                obstacleInputs[goal.id]?.trim()
-                                  ? 'bg-primary-aqua text-white hover:bg-primary-aqua/80'
-                                  : 'bg-white/10 text-white/40 cursor-not-allowed'
-                              }`}
-                              type="button"
-                            >
-                              <Plus className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+        {/* Goals List */}
+        <div className="space-y-8 max-w-2xl mx-auto">
+          {goals.map((goal) => (
+            <div key={goal.id} className="bg-white/5 rounded-xl p-6 border border-white/10">
+              <h4 className="text-lg font-semibold mb-4 font-heading text-white">
+                {goal.title}
+              </h4>
+              
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-2 font-heading">
+                  What motivates you to achieve this goal?
+                </label>
+                <textarea
+                  value={motivations[goal.id] || ''}
+                  onChange={(e) => handleMotivationChange(goal.id, e.target.value)}
+                  placeholder="Describe what drives you to achieve this goal..."
+                  className="w-full bg-white/5 text-white border border-white/20 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-aqua/50 focus:border-transparent backdrop-blur-lg resize-none font-body"
+                  rows={3}
+                  required
+                />
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
 
         <div className="mt-16 flex justify-between max-w-md mx-auto">
