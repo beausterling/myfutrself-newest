@@ -243,22 +243,6 @@ const Landing = () => {
                 </Link>
               )}
             </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 1.8 }}
-              className="bg-gradient-to-r from-primary-aqua/10 to-primary-blue/10 rounded-2xl border border-primary-aqua/20 p-6"
-            >
-              <blockquote className="text-lg md:text-xl font-medium text-white/90 font-body italic leading-relaxed">
-                "The person you are today is the result of conversations you
-                had with yourself yesterday. The person you become tomorrow
-                depends on the conversations you have with yourself today."
-              </blockquote>
-              <div className="mt-4 text-primary-aqua font-semibold font-heading">
-                — Dr. Hal Hershfield, UCLA Behavioral Scientist
-              </div>
-            </motion.div>
           </motion.div>
         </div>
 
@@ -292,9 +276,6 @@ const Landing = () => {
                 with yourself yesterday. The person you become tomorrow depends
                 on the conversations you have with yourself today."
               </blockquote>
-              <cite className="text-primary-aqua font-heading font-semibold">
-                — Dr. Hal Hershfield, UCLA Behavioral Scientist
-              </cite>
             </div>
           </motion.div>
         </div>
