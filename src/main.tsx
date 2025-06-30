@@ -33,7 +33,7 @@ const ClerkProviderWithNavigate = () => {
           card: {
             backgroundColor: 'rgba(16, 26, 47, 0.9)',
             backdropFilter: 'blur(16px)',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
+            border: '1px solid rgba(255, 255, 255, 0.3)',
             borderRadius: '1.5rem'
           },
           modalContent: {
@@ -51,7 +51,7 @@ const ClerkProviderWithNavigate = () => {
           },
           socialButtonsBlockButton: {
             backgroundColor: 'rgba(16, 26, 47, 0.8)',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
+            border: '1px solid rgba(255, 255, 255, 0.3)',
             color: 'rgb(255, 255, 255)'
           },
           formButtonPrimary: {
@@ -61,10 +61,49 @@ const ClerkProviderWithNavigate = () => {
           formFieldInput: {
             backgroundColor: 'rgba(16, 26, 47, 0.8)',
             color: 'rgb(255, 255, 255)',
-            border: '1px solid rgba(255, 255, 255, 0.2)'
+            border: '1px solid rgba(255, 255, 255, 0.3)'
           },
           footerActionLink: {
             color: 'rgb(36, 210, 211)'
+          },
+          formFieldInputShowPasswordButton: {
+            color: 'rgba(255, 255, 255, 0.7)'
+          },
+          formFieldLabel: {
+            color: 'rgba(255, 255, 255, 0.9)'
+          },
+          dividerLine: {
+            backgroundColor: 'rgba(255, 255, 255, 0.3)'
+          },
+          dividerText: {
+            color: 'rgba(255, 255, 255, 0.7)'
+          },
+          formFieldAction: {
+            color: 'rgb(36, 210, 211)'
+          },
+          identityPreviewEditButton: {
+            color: 'rgb(36, 210, 211)'
+          },
+          formFieldSuccessText: {
+            color: 'rgb(34, 197, 94)'
+          },
+          formFieldErrorText: {
+            color: 'rgb(239, 68, 68)'
+          },
+          alertError: {
+            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            color: 'rgb(239, 68, 68)'
+          },
+          phoneInputBox: {
+            backgroundColor: 'rgba(16, 26, 47, 0.8)',
+            border: '1px solid rgba(255, 255, 255, 0.3)',
+            color: 'rgb(255, 255, 255)'
+          },
+          otpCodeFieldInput: {
+            backgroundColor: 'rgba(16, 26, 47, 0.8)',
+            border: '1px solid rgba(255, 255, 255, 0.3)',
+            color: 'rgb(255, 255, 255)'
           }
         }
       }}
